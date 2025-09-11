@@ -40,7 +40,11 @@
  * You should add more #includes here
  */
 //#include "okapi/api.hpp"
-
+#include "lemlib/api.hpp"
+#include "custom/globals.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/instantCommand.h"
 /**
  * If you find doing pros::Motor() to be tedious and you'd prefer just to do
  * Motor, you can use the namespace with the following commented out line.
