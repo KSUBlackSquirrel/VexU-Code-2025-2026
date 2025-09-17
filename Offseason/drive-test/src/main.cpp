@@ -1,25 +1,32 @@
 #include "main.h"
 
-std::vector<std::unique_ptr<CommandBase>>* schedulerList = new std::vector<std::unique_ptr<CommandBase>>();
+static Scheduler scheduler;
 
-Controller controller(pros::E_CONTROLLER_MASTER, schedulerList);
-//Controller controller2(pros::E_CONTROLLER_PARTNER, schedulerList);
+Controller controller(globalDrive::mainControllerID, &scheduler);
 
 // Add Subsystems Here
 
 // Add Any Button Bindings Here
 void configureBindings() {
-   
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { int num=0; }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
 }
 
+
 /**
- * Runs initialization code. This occurs as soon as the program is started.
+ * This function runs once when the program starts. It sets up all controller bindings
+ * and registers the controller with the scheduler. This is where you configure your
+ * command-based system before any competition modes begin.
  *
- * All other competition modes are blocked by initialize; it is recommended
- * to keep execution time for this mode under a few seconds.
+ * - configureBindings(): Sets up all button/joystick bindings for the controller.
+ * - scheduler.registerController(&controller): Registers the controller so its inputs
+ *   are polled and commands can be scheduled during opcontrol.
+ *
+ * Keep this function fast—long operations here will block competition modes.
  */
 void initialize() {
     configureBindings();
+    scheduler.registerController(&controller);
 }
 
 /**
@@ -68,23 +75,12 @@ void autonomous() {}
  */
 void opcontrol() {
     while (true) {
-        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "List Size: %3d", schedulerList->size());
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "List Size: %3d", static_cast<int>(scheduler.size()));
         pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
 
-        controller.poll();                                                      // 1. Check all bindings and schedules commands as needed
-        
-        for (auto it = schedulerList->begin(); it != schedulerList->end();) {
-            (*it)->execute();                                                   // 2. Run the command's main logic
-            if ((*it)->isFinished()) {                                          // 3. Check if finished
-                (*it)->end();                                                   // 4. Clean up if finished
-                it = schedulerList->erase(it);                                  // Remove from scheduler
-            } else {
-                ++it;
-            }
-        }
-        
-        // Update all registered subsystems once per loop
-        controller.updateSubsystems();
+        scheduler.pollControllers();    // 1. Check all bindings and schedule commands as needed
+        scheduler.tick();               // 2-4. Run, finish, clean up
+        scheduler.updateSubsystems();   // Update all registered subsystems once per loop
 
         pros::delay(30);
     }

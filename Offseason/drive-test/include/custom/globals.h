@@ -1,7 +1,24 @@
-#ifndef _GLOBALS_H_
-#define _GLOBALS_H_
+#ifndef GLOBALS_HPP_
+#define GLOBALS_HPP_
+
+#include "main.h"
+
+namespace MotorTools {
+inline int percentToVelocity(int percent, pros::MotorGears color) {
+    int maxRpm = 0;
+    switch (color) {
+        case pros::MotorGearset::red:   maxRpm = 100; break;
+        case pros::MotorGearset::green: maxRpm = 200; break;
+        case pros::MotorGearset::blue:  maxRpm = 600; break;
+        default: maxRpm = 0; break;
+    }
+    return static_cast<int>(percent * maxRpm / 100.0);
+}
+} // namespace motor tools 
+
 
 namespace globalDrive {
+const static pros::controller_id_e_t mainControllerID = pros::E_CONTROLLER_MASTER;
 const static pros::controller_analog_e_t leftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
 const static pros::controller_analog_e_t rightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
 
@@ -17,6 +34,6 @@ const static int wheelRPM = 400;
 const static int horizontalDrift = 2;
 
 const static int imuID = 5;
-}
+} // namespace drive vars
 
 #endif

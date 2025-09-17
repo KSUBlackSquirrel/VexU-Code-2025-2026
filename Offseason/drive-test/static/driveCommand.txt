@@ -1,0 +1,35 @@
+#ifndef DRIVECOMMAND_H_
+#define DRIVECOMMAND_H_
+
+#include "commandBase.h"
+#include "custom/subsystem/driveSubsystem.h"
+#include "custom/globals.h"
+
+class SubsystemBase;
+
+class DriveCommand: public CommandBase {
+public:
+    DriveCommand(DriveSubsystem* sub) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+    inline void execute() override {
+        subsystem->tankDrive(globalDrive::mainControllerID, false);
+    }
+
+    inline void end() override {}
+
+    inline void interrupted() override {}
+
+    inline bool isFinished() override { return false; }
+
+    inline CommandBase* clone() const override {
+        return new DriveCommand(*this);
+    }
+
+private:
+    DriveSubsystem* subsystem;
+};
+
+#endif
