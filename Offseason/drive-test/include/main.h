@@ -41,7 +41,8 @@
  */
 //#include "okapi/api.hpp"
 #include "lemlib/api.hpp"
-#include "custom/globals.h"
+#include "globals.h"
+#include "custom/controller.h"
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/command/commandBase.h"
 #include "custom/command/instantCommand.h"
