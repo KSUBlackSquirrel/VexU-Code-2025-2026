@@ -1,7 +1,8 @@
 #ifndef DRIVERSUBSYSTEM_H_
 #define DRIVESUBSYSTEM_H_
 
-#include "main.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "lemlib/api.hpp"
 
 
 class DriveSubsystem : public SubsystemBase {
