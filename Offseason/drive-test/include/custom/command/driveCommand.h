@@ -3,19 +3,21 @@
 
 #include "commandBase.h"
 #include "custom/subsystem/driveSubsystem.h"
+#include "custom/controller.h"
 #include "custom/globals.h"
 
 class SubsystemBase;
 
 class DriveCommand: public CommandBase {
 public:
-    DriveCommand(DriveSubsystem* sub) { 
-        subsystem = sub; 
+    DriveCommand(DriveSubsystem* sub, Controller* ctrl) { 
+        subsystem = sub;
+        controller = ctrl;
         addRequirements(subsystem);
     }
 
     inline void execute() override {
-        subsystem->tankDrive(globalDrive::mainControllerID, false);
+        subsystem->tankDrive(controller, false);
     }
 
     inline void end() override {}
@@ -30,6 +32,7 @@ public:
 
 private:
     DriveSubsystem* subsystem;
+    Controller* controller;
 };
 
 #endif

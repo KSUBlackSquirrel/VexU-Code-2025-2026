@@ -8,7 +8,9 @@ Controller controller(globalDrive::mainControllerID, &scheduler);
 
 // Add Any Button Bindings Here
 void configureBindings() {
-    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { int num=0; }));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { 
+        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "PRESS");
+     }));
     controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
 }
 

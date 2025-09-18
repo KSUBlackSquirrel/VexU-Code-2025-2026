@@ -1,7 +1,8 @@
-#ifndef DRIVERSUBSYSTEM_H_
+#ifndef DRIVESUBSYSTEM_H_
 #define DRIVESUBSYSTEM_H_
 
 #include "custom/subsystem/subsystemBase.h"
+#include "custom/controller.h"
 #include "lemlib/api.hpp"
 
 
@@ -25,10 +26,10 @@ class DriveSubsystem : public SubsystemBase {
             return chassis.getPose();
         }
 
-        inline void tankDrive(pros::Controller& controller, bool inverted){
+        inline void tankDrive(Controller* controller, bool inverted){
             chassis.tank(
-                inverted ? -controller.get_analog(globalDrive::rightStickY) : controller.get_analog(globalDrive::leftStickY),
-                inverted ?  -controller.get_analog(globalDrive::leftStickY) : controller.get_analog(globalDrive::rightStickY));
+                inverted ? -controller->get_analog(globalDrive::rightStickY) : controller->get_analog(globalDrive::leftStickY),
+                inverted ?  -controller->get_analog(globalDrive::leftStickY) : controller->get_analog(globalDrive::rightStickY));
         }
 
     private:

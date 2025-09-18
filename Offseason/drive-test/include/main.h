@@ -51,8 +51,8 @@
 #include "custom/command/commandBase.h"
 #include "custom/command/instantCommand.h"
 
-// #include "custom/command/driveCommand.h"
-// #include "custom/subsystem/driveSubsystem.h"
+#include "custom/command/driveCommand.h"
+#include "custom/subsystem/driveSubsystem.h"
 
 
 
