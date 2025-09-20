@@ -9,11 +9,11 @@
 class DriveSubsystem : public SubsystemBase {
     public:
         DriveSubsystem()
-            : throttle_curve(globalDrive::joystickDeadband, globalDrive::joystickDeadband, globalDrive::expoCurve),
-            steer_curve(globalDrive::joystickDeadband, globalDrive::joystickDeadband, globalDrive::expoCurve),
-            left_motor_group(globalDrive::leftMotorsID, globalDrive::driveTrainColor),
-            right_motor_group(globalDrive::rightMotorsID, globalDrive::driveTrainColor),
-            drivetrain(&left_motor_group, &right_motor_group, globalDrive::wheelTrack, globalDrive::wheelDiameter, globalDrive::wheelRPM, globalDrive::horizontalDrift),
+            : throttle_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            steer_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            left_motor_group(globalConst::drive::leftMotorsID, globalConst::drive::driveTrainColor),
+            right_motor_group(globalConst::drive::rightMotorsID, globalConst::drive::driveTrainColor),
+            drivetrain(&left_motor_group, &right_motor_group, globalConst::drive::wheelTrack, globalConst::drive::wheelDiameter, globalConst::drive::wheelRPM, globalConst::drive::horizontalDrift),
             sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
             lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
             angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
@@ -28,8 +28,8 @@ class DriveSubsystem : public SubsystemBase {
 
         inline void tankDrive(Controller* controller, bool inverted){
             chassis.tank(
-                inverted ? -controller->get_analog(globalDrive::rightStickY) : controller->get_analog(globalDrive::leftStickY),
-                inverted ?  -controller->get_analog(globalDrive::leftStickY) : controller->get_analog(globalDrive::rightStickY));
+                inverted ? -controller->get_analog(globalConst::drive::rightStickY) : controller->get_analog(globalConst::drive::leftStickY),
+                inverted ?  -controller->get_analog(globalConst::drive::leftStickY) : controller->get_analog(globalConst::drive::rightStickY));
         }
 
     private:

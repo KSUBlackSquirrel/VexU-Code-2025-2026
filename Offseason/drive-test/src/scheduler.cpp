@@ -1,6 +1,6 @@
 // Scheduler.cpp
 // Implements the Scheduler class for command scheduling, execution, and subsystem updates.
-// Handles the main command queue and periodic subsystem management.
+// Handles the main command queue, periodic subsystem management, and default commands.
 #include "main.h"
 
 // Scheduler constructor: initializes the scheduler
@@ -73,9 +73,44 @@ void Scheduler::updateSubsystems() {
     }
 }
 
-// Run one scheduler tick: execute, finish, cleanup commands
+// Set a default command for all subsystems affected by the command (required and used).
+void Scheduler::setDefaultCommand(CommandBase* command) {
+    for (SubsystemBase* subsystem : command->getRequiredSubsystems()) {
+        defaultCommands[subsystem] = command;
+    }
+    for (SubsystemBase* subsystem : command->getUsedSubsystems()) {
+        defaultCommands[subsystem] = command;
+    }
+}
+
+// Run one scheduler tick: execute, finish, cleanup commands, and manage default commands
 void Scheduler::tick() {
+    // Track which subsystems are currently in use by scheduled commands
+    std::unordered_set<SubsystemBase*> busySubsystems;
+    for (const auto& cmdPtr : queue) {
+        if (!cmdPtr) continue;
+        for (SubsystemBase* sub : cmdPtr->getRequiredSubsystems()) {
+            busySubsystems.insert(sub);
+        }
+        for (SubsystemBase* sub : cmdPtr->getUsedSubsystems()) {
+            busySubsystems.insert(sub);
+        }
+    }
+
+    // Remove default commands for busy subsystems
     for (auto it = queue.begin(); it != queue.end();) {
+        if (!(*it)) {
+            it = queue.erase(it);
+            continue;
+        }
+        // If this is a default command and its subsystem is now busy, end and remove it
+        for (auto& [subsystem, defaultCmd] : defaultCommands) {
+            if ((*it).get() == defaultCmd && busySubsystems.count(subsystem)) {
+                (*it)->end();
+                it = queue.erase(it);
+                goto next_cmd;
+            }
+        }
         (*it)->execute();
         if ((*it)->isFinished()) {
             (*it)->end();
@@ -83,9 +118,27 @@ void Scheduler::tick() {
         } else {
             ++it;
         }
+    next_cmd:;
+    }
+
+    // Add default commands for subsystems that are not busy and not already scheduled
+    for (auto& [subsystem, defaultCmd] : defaultCommands) {
+        if (!busySubsystems.count(subsystem)) {
+            bool alreadyScheduled = false;
+            for (const auto& cmdPtr : queue) {
+                if (cmdPtr && cmdPtr.get() == defaultCmd) {
+                    alreadyScheduled = true;
+                    break;
+                }
+            }
+            if (!alreadyScheduled) {
+                auto clonedCmd = std::unique_ptr<CommandBase>(defaultCmd->clone());
+                queue.push_back(std::move(clonedCmd));
+            }
+        }
     }
 }
 
-// Utility helpers for queue size and empty check
 std::size_t Scheduler::size() const { return queue.size(); }
+std::size_t Scheduler::defaultSize() const { return defaultCommands.size(); }
 bool Scheduler::empty() const { return queue.empty(); }

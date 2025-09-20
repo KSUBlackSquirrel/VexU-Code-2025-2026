@@ -3,6 +3,9 @@
 
 #include "main.h"
 
+
+namespace globalConst {
+
 namespace MotorTools {
 inline int percentToVelocity(int percent, pros::MotorGears color) {
     int maxRpm = 0;
@@ -17,7 +20,7 @@ inline int percentToVelocity(int percent, pros::MotorGears color) {
 } // namespace motor tools 
 
 
-namespace globalDrive {
+namespace drive {
 const static pros::controller_id_e_t mainControllerID = pros::E_CONTROLLER_MASTER;
 const static pros::controller_analog_e_t leftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
 const static pros::controller_analog_e_t rightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
@@ -35,5 +38,25 @@ const static int horizontalDrift = 2;
 
 const static int imuID = 5;
 } // namespace drive vars
+
+namespace example {
+const static std::int8_t motorId = 20;
+const static pros::MotorGears motorColor = pros::MotorGearset::red;
+} // namespace vars used for examples
+
+} // all global consts
+
+
+
+namespace globalVar {
+
+namespace pulse {
+static int count = 0;
+static double position = 0.0;
+
+} // namespace pulse
+
+} // all global vars
+
 
 #endif

@@ -36,10 +36,6 @@
 
 #include "api.h"
 
-/**
- * You should add more #includes here
- */
-//#include "okapi/api.hpp"
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "pros/colors.hpp"
 
@@ -51,8 +47,14 @@
 #include "custom/command/commandBase.h"
 #include "custom/command/instantCommand.h"
 
+/**
+ * You should add more #includes here
+ */
 #include "custom/command/driveCommand.h"
 #include "custom/subsystem/driveSubsystem.h"
+
+#include "custom/command/exampleCommand.h"
+#include "custom/subsystem/exampleSubsystem.h"
 
 
 

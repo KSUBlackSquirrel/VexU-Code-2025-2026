@@ -6,6 +6,8 @@ class Controller;
 #include "custom/subsystem/subsystemBase.h"
 #include <vector>
 #include <memory>
+#include <unordered_set>
+#include <unordered_map>
 
 class Scheduler {
 public:
@@ -13,15 +15,18 @@ public:
     void registerController(Controller* ctrl);
     void pollControllers();
     CommandBase* addCommand(const CommandBase* cmd);
+    void setDefaultCommand(CommandBase* command);
     void cancelCommand(CommandBase* commandInstance);
     void registerSubsystemForPeriodic(SubsystemBase* subsystem);
     void updateSubsystems();
     void tick();
     std::size_t size() const;
+    std::size_t defaultSize() const;
     bool empty() const;
 
 private:
     std::vector<std::unique_ptr<CommandBase>> queue;
+    std::unordered_map<SubsystemBase*, CommandBase*> defaultCommands;
     std::vector<SubsystemBase*> periodicSubsystems;
     std::vector<Controller*> controllers;
 };
