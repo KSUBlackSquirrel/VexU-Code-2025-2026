@@ -13,13 +13,17 @@ class Scheduler {
 public:
     Scheduler();
     void registerController(Controller* ctrl);
-    void pollControllers();
     CommandBase* addCommand(const CommandBase* cmd);
     void setDefaultCommand(CommandBase* command);
     void cancelCommand(CommandBase* commandInstance);
     void registerSubsystemForPeriodic(SubsystemBase* subsystem);
-    void updateSubsystems();
-    void tick();
+    void run();
+    // Individual scheduler tick steps
+    void step1_runSubsystemPeriodicMethods();
+    void step2_pollCommandSchedulingTriggers();
+    void step3_runAndFinishScheduledCommands();
+    void step4_scheduleDefaultCommands();
+    
     std::size_t size() const;
     std::size_t defaultSize() const;
     bool empty() const;

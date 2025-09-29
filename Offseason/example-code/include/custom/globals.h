@@ -1,7 +1,9 @@
 #ifndef GLOBALS_HPP_
 #define GLOBALS_HPP_
 
-#include "main.h"
+#include "pros/motors.hpp"
+#include "lemlib/api.hpp"
+#include <vector>
 
 
 namespace globalConst {

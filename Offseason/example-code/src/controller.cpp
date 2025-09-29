@@ -36,7 +36,6 @@ ButtonBinder& ButtonBinder::onTrue(pros::controller_digital_e_t btn, const Comma
     button = btn;
     command = cmd;
     edge = Edge::Rising;
-    registerSubsystems(cmd);
     controller->buttonBinders.emplace_back(*this);
     return controller->buttonBinders.back();
 }
@@ -46,7 +45,6 @@ ButtonBinder& ButtonBinder::onFalse(pros::controller_digital_e_t btn, const Comm
     button = btn;
     command = cmd;
     edge = Edge::Falling;
-    registerSubsystems(cmd);
     controller->buttonBinders.emplace_back(*this);
     return controller->buttonBinders.back();
 }
@@ -56,7 +54,6 @@ ButtonBinder& ButtonBinder::whileTrue(pros::controller_digital_e_t btn, const Co
     button = btn;
     command = cmd;
     edge = Edge::WhileTrue;
-    registerSubsystems(cmd);
     controller->buttonBinders.emplace_back(*this);
     return controller->buttonBinders.back();
 }
@@ -82,18 +79,6 @@ void ButtonBinder::poll() {
     }
 }
 
-// Register all subsystems required/used by this command for periodic updates
-void ButtonBinder::registerSubsystems(const CommandBase* cmd) {
-    const auto& requiredSubsystems = cmd->getRequiredSubsystems();
-    for (SubsystemBase* subsystem : requiredSubsystems) {
-        controller->scheduler->registerSubsystemForPeriodic(subsystem);
-    }
-    const auto& usedSubsystems = cmd->getUsedSubsystems();
-    for (SubsystemBase* subsystem : usedSubsystems) {
-        controller->scheduler->registerSubsystemForPeriodic(subsystem);
-    }
-}
-
 // JoystickBinder constructor: binds to a controller
 JoystickBinder::JoystickBinder(Controller* ctrl)
     : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
@@ -104,7 +89,6 @@ JoystickBinder& JoystickBinder::onTrue(pros::controller_analog_e_t stick, int th
     this->threshold = threshold;
     this->command = cmd;
     edge = Edge::Rising;
-    registerSubsystems(cmd);
     controller->joystickBinders.emplace_back(*this);
     return controller->joystickBinders.back();
 }
@@ -114,7 +98,6 @@ JoystickBinder& JoystickBinder::onFalse(pros::controller_analog_e_t stick, int t
     this->threshold = threshold;
     this->command = cmd;
     edge = Edge::Falling;
-    registerSubsystems(cmd);
     controller->joystickBinders.emplace_back(*this);
     return controller->joystickBinders.back();
 }
@@ -124,7 +107,6 @@ JoystickBinder& JoystickBinder::whileTrue(pros::controller_analog_e_t stick, int
     this->threshold = threshold;
     this->command = cmd;
     edge = Edge::WhileTrue;
-    registerSubsystems(cmd);
     controller->joystickBinders.emplace_back(*this);
     return controller->joystickBinders.back();
 }
@@ -144,16 +126,4 @@ void JoystickBinder::poll() {
         }
     }
     prev = above;
-}
-
-// Register all subsystems required/used by this command for periodic updates
-void JoystickBinder::registerSubsystems(const CommandBase* cmd) {
-    const auto& requiredSubsystems = cmd->getRequiredSubsystems();
-    for (SubsystemBase* subsystem : requiredSubsystems) {
-        controller->scheduler->registerSubsystemForPeriodic(subsystem);
-    }
-    const auto& usedSubsystems = cmd->getUsedSubsystems();
-    for (SubsystemBase* subsystem : usedSubsystems) {
-        controller->scheduler->registerSubsystemForPeriodic(subsystem);
-    }
 }

@@ -10,8 +10,8 @@
 class InstantCommand : public CommandBase  {
 public:
     // Construct with a function to run and optional subsystem requirement
-    InstantCommand(std::function<void()> func, SubsystemBase* subsystem = nullptr) : action(func) {
-        if (subsystem) addRequirements(subsystem);
+    InstantCommand(std::function<void()> func, SubsystemBase* subsystem = nullptr, bool addReq = false) : action(func) {
+        if (addReq && subsystem) addRequirements(subsystem);
     }
 
     // Run the action once when scheduled

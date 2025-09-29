@@ -23,6 +23,7 @@ void configureBindings() {
  * and registers the controller with the scheduler. This is where you configure your
  * command-based system before any competition modes begin.
  *
+ * - SubsystemBase::setScheduler(&scheduler): Enables auto-registration for subsystems
  * - configureBindings(): Sets up all button/joystick bindings for the controller.
  * - scheduler.registerController(&controller): Registers the controller so its inputs
  *   are polled and commands can be scheduled during opcontrol.
@@ -30,8 +31,12 @@ void configureBindings() {
  * Keep this function fast—long operations here will block competition modes.
  */
 void initialize() {
+    // DO NOT Modify the code below
+    SubsystemBase::setScheduler(&scheduler); // Enable auto-registration
     configureBindings();
     scheduler.registerController(&controller);
+    // Add New Code Below
+
 }
 
 /**
@@ -88,10 +93,9 @@ void opcontrol() {
         pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
 
 
-        scheduler.pollControllers();    // 1. Check all bindings and schedule commands as needed
-        scheduler.tick();               // 2-4. Run, finish, clean up
-        scheduler.updateSubsystems();   // Update all registered subsystems once per loop
-
+        // DO NOT Modify the code below
+        scheduler.run();
+        // TODO change to count and run after a min time ms and print the full wait
         pros::delay(30);
     }
 };

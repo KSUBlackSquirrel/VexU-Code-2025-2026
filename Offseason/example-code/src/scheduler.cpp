@@ -11,13 +11,6 @@ void Scheduler::registerController(Controller* ctrl) {
     controllers.push_back(ctrl);
 }
 
-// Poll all registered controllers to process input events
-void Scheduler::pollControllers() {
-    for (Controller* ctrl : controllers) {
-        ctrl->poll();
-    }
-}
-
 // Add a command to the scheduler queue, handling subsystem conflicts
 CommandBase* Scheduler::addCommand(const CommandBase* cmd) {
     const auto& requiredSubsystems = cmd->getRequiredSubsystems();
@@ -66,25 +59,41 @@ void Scheduler::registerSubsystemForPeriodic(SubsystemBase* subsystem) {
     periodicSubsystems.push_back(subsystem);
 }
 
-// Call periodic() on all registered subsystems
-void Scheduler::updateSubsystems() {
-    for (SubsystemBase* subsystem : periodicSubsystems) {
-        subsystem->periodic();
-    }
-}
-
 // Set a default command for all subsystems affected by the command (required and used).
 void Scheduler::setDefaultCommand(CommandBase* command) {
     for (SubsystemBase* subsystem : command->getRequiredSubsystems()) {
         defaultCommands[subsystem] = command;
     }
-    for (SubsystemBase* subsystem : command->getUsedSubsystems()) {
-        defaultCommands[subsystem] = command;
+}
+
+// Run one scheduler tick: 
+// Step 1: Run Subsystem Periodic Methods
+// Step 2: Poll Command Scheduling Triggers
+// Step 3: Run/Finish Scheduled Commands
+// Step 4: Schedule Default Commands
+void Scheduler::run() {
+    step1_runSubsystemPeriodicMethods();
+    step2_pollCommandSchedulingTriggers();
+    step3_runAndFinishScheduledCommands();
+    step4_scheduleDefaultCommands();
+}
+
+// Step 1: Run Subsystem Periodic Methods
+void Scheduler::step1_runSubsystemPeriodicMethods() {
+    for (SubsystemBase* subsystem : periodicSubsystems) {
+        subsystem->periodic();
     }
 }
 
-// Run one scheduler tick: execute, finish, cleanup commands, and manage default commands
-void Scheduler::tick() {
+// Step 2: Poll Command Scheduling Triggers
+void Scheduler::step2_pollCommandSchedulingTriggers() {
+    for (Controller* ctrl : controllers) {
+        ctrl->poll();
+    }
+}
+
+// Step 3: Run/Finish Scheduled Commands
+void Scheduler::step3_runAndFinishScheduledCommands() {
     // Track which subsystems are currently in use by scheduled commands
     std::unordered_set<SubsystemBase*> busySubsystems;
     for (const auto& cmdPtr : queue) {
@@ -92,12 +101,9 @@ void Scheduler::tick() {
         for (SubsystemBase* sub : cmdPtr->getRequiredSubsystems()) {
             busySubsystems.insert(sub);
         }
-        for (SubsystemBase* sub : cmdPtr->getUsedSubsystems()) {
-            busySubsystems.insert(sub);
-        }
     }
 
-    // Remove default commands for busy subsystems
+    // Remove default commands for busy subsystems and execute all commands
     for (auto it = queue.begin(); it != queue.end();) {
         if (!(*it)) {
             it = queue.erase(it);
@@ -119,6 +125,18 @@ void Scheduler::tick() {
             ++it;
         }
     next_cmd:;
+    }
+}
+
+// Step 4: Schedule Default Commands
+void Scheduler::step4_scheduleDefaultCommands() {
+    // Track which subsystems are currently in use by scheduled commands
+    std::unordered_set<SubsystemBase*> busySubsystems;
+    for (const auto& cmdPtr : queue) {
+        if (!cmdPtr) continue;
+        for (SubsystemBase* sub : cmdPtr->getRequiredSubsystems()) {
+            busySubsystems.insert(sub);
+        }
     }
 
     // Add default commands for subsystems that are not busy and not already scheduled

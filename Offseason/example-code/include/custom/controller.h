@@ -39,7 +39,6 @@ private:
     const CommandBase* command;
     Edge edge;
     CommandBase* runningCommand;
-    void registerSubsystems(const CommandBase* cmd);
 };
 
 
@@ -59,7 +58,6 @@ private:
     bool prev;
     Edge edge;
     CommandBase* runningCommand;
-    void registerSubsystems(const CommandBase* cmd);
 };
 
 

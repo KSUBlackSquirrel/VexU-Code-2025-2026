@@ -33,26 +33,13 @@ public:
         }
     }
     
-    // Add a subsystem that this command uses (for periodic updates) without requiring it
-    inline void addUsedSubsystem(SubsystemBase* subsystem) {
-        if (subsystem != nullptr) {
-            usedSubsystems.push_back(subsystem);
-        }
-    }
-    
     // Get all required subsystems (for interruption logic)
     inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
         return requiredSubsystems;
     }
-    
-    // Get all used subsystems (for periodic updates)
-    inline const std::vector<SubsystemBase*>& getUsedSubsystems() const {
-        return usedSubsystems;
-    }
 
 private:
     std::vector<SubsystemBase*> requiredSubsystems;  // Subsystems required for this command
-    std::vector<SubsystemBase*> usedSubsystems;      // Subsystems used for periodic updates
 };
 
 #endif
