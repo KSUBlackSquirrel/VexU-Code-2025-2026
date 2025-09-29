@@ -18,17 +18,19 @@ public:
     void cancelCommand(CommandBase* commandInstance);
     void registerSubsystemForPeriodic(SubsystemBase* subsystem);
     void run();
-    // Individual scheduler tick steps
-    void step1_runSubsystemPeriodicMethods();
-    void step2_pollCommandSchedulingTriggers();
-    void step3_runAndFinishScheduledCommands();
-    void step4_scheduleDefaultCommands();
+
     
     std::size_t size() const;
     std::size_t defaultSize() const;
     bool empty() const;
 
 private:
+    // Individual scheduler tick steps
+    void step1_runSubsystemPeriodicMethods();
+    void step2_pollCommandSchedulingTriggers();
+    void step3_runAndFinishScheduledCommands();
+    void step4_scheduleDefaultCommands();
+    
     std::vector<std::unique_ptr<CommandBase>> queue;
     std::unordered_map<SubsystemBase*, CommandBase*> defaultCommands;
     std::vector<SubsystemBase*> periodicSubsystems;
