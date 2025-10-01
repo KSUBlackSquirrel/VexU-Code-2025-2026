@@ -33,7 +33,6 @@ public:
 
     void poll();
 
-    std::array<bool, 12> prevButtonStates;
     std::vector<ButtonBinder> buttonBinders;
     std::vector<JoystickBinder> joystickBinders;
     Scheduler* scheduler;

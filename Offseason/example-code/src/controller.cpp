@@ -3,9 +3,7 @@
 
 // Controller constructor: initializes the controller and binds it to a scheduler.
 Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
-    : pros::Controller(id), scheduler(sch) {
-    prevButtonStates.fill(false);
-}
+    : pros::Controller(id), scheduler(sch) {}
 
 // Create a new ButtonBinder for every available button on this controller
 ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }

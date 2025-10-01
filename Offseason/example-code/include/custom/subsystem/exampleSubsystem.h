@@ -29,17 +29,22 @@ class ExampleSubsystem : public SubsystemBase {
 
         inline void periodic() override {
             position = getPosition();
-            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count);
 
-            std::cout << '\r' << count << '\n';
-            std::cout << '\r' << position << '\n';
+            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count); // try %f for float and not %d for int
+            pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %3d", position);
+            
+            printf("\n\n\n%3d\n", count);
+            printf("%3d\n", position);
+
+            std::cout << count << '\n';
+            std::cout << position << '\n';
         }
 
-        int count = 0;
-        double position = 0;
-
+        
     private:
         pros::Motor motor;
+        int count = 0;
+        double position = 0;
 
 };
 

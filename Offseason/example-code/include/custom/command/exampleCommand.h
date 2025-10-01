@@ -44,7 +44,7 @@ public:
 private:
     ExampleSubsystem* exampleSubsystem;
     double pulseLen = 300.0;
-    uint8_t count;
+    uint8_t count = 0;
 };
 
 #endif
