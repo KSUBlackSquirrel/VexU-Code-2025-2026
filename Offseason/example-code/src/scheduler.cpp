@@ -1,6 +1,3 @@
-// Scheduler.cpp
-// Implements the Scheduler class for command scheduling, execution, and subsystem updates.
-// Handles the main command queue, periodic subsystem management, and default commands.
 #include "main.h"
 
 // Scheduler constructor: initializes the scheduler

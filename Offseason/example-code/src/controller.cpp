@@ -1,6 +1,3 @@
-// Controller.cpp
-// Implements the Controller class and its binder helpers for button/joystick command scheduling.
-// This file handles polling controller inputs and scheduling commands via the Scheduler.
 #include "main.h"
 
 
@@ -10,16 +7,26 @@ Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
     prevButtonStates.fill(false);
 }
 
+// Create a new ButtonBinder for every available button on this controller
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+ButtonBinder Controller::B() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_B); }
+ButtonBinder Controller::X() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_X); }
+ButtonBinder Controller::Y() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_Y); }
+ButtonBinder Controller::Right() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
+ButtonBinder Controller::Down() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
+ButtonBinder Controller::Up() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
+ButtonBinder Controller::Left() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
+ButtonBinder Controller::L1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L1); }
+ButtonBinder Controller::L2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L2); }
+ButtonBinder Controller::R1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R1); }
+ButtonBinder Controller::R2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R2); }
 
-// Create a new ButtonBinder for this controller
-ButtonBinder Controller::setButtonCommand() {
-    return ButtonBinder(this);
-}
+// Create a new JoystickBinder for each joystick on this controller
+JoystickBinder Controller::LeftJoyY(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_LEFT_Y, threshold); }
+JoystickBinder Controller::LeftJoyX(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_LEFT_X, threshold); }
+JoystickBinder Controller::RightJoyY(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_RIGHT_Y, threshold); }
+JoystickBinder Controller::RightJoyX(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_RIGHT_X, threshold); }
 
-// Create a new JoystickBinder for this controller
-JoystickBinder Controller::setJoystickCommand() {
-    return JoystickBinder(this);
-}
 
 // Poll all binders to check for input events and schedule/cancel commands
 void Controller::poll() {
@@ -28,30 +35,23 @@ void Controller::poll() {
 }
 
 // ButtonBinder constructor: binds to a controller
-ButtonBinder::ButtonBinder(Controller* ctrl)
-    : controller(ctrl), edge(Edge::None), runningCommand(nullptr) {}
+ButtonBinder::ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn)
+    : controller(ctrl), button(btn), command(nullptr), edge(Edge::None), runningCommand(nullptr) {}
 
-// Bind a command to a button press (rising edge)
-ButtonBinder& ButtonBinder::onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
-    button = btn;
+// Bind a command to button movement (rising edge, falling edge, or while held)
+ButtonBinder& ButtonBinder::onTrue(const CommandBase* cmd) {
     command = cmd;
     edge = Edge::Rising;
     controller->buttonBinders.emplace_back(*this);
     return controller->buttonBinders.back();
 }
-
-// Bind a command to a button release (falling edge)
-ButtonBinder& ButtonBinder::onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
-    button = btn;
+ButtonBinder& ButtonBinder::onFalse(const CommandBase* cmd) {
     command = cmd;
     edge = Edge::Falling;
     controller->buttonBinders.emplace_back(*this);
     return controller->buttonBinders.back();
 }
-
-// Bind a command to while a button is held
-ButtonBinder& ButtonBinder::whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
-    button = btn;
+ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
     command = cmd;
     edge = Edge::WhileTrue;
     controller->buttonBinders.emplace_back(*this);
@@ -80,31 +80,23 @@ void ButtonBinder::poll() {
 }
 
 // JoystickBinder constructor: binds to a controller
-JoystickBinder::JoystickBinder(Controller* ctrl)
-    : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+JoystickBinder::JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold)
+    : controller(ctrl), stick(stick), threshold(threshold), command(nullptr), edge(Edge::None), prev(false), runningCommand(nullptr) {}
 
 // Bind a command to joystick movement (rising edge, falling edge, or while held)
-JoystickBinder& JoystickBinder::onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
-    this->stick = stick;
-    this->threshold = threshold;
+JoystickBinder& JoystickBinder::onTrue(const CommandBase* cmd) {
     this->command = cmd;
     edge = Edge::Rising;
     controller->joystickBinders.emplace_back(*this);
     return controller->joystickBinders.back();
 }
-
-JoystickBinder& JoystickBinder::onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
-    this->stick = stick;
-    this->threshold = threshold;
+JoystickBinder& JoystickBinder::onFalse(const CommandBase* cmd) {
     this->command = cmd;
     edge = Edge::Falling;
     controller->joystickBinders.emplace_back(*this);
     return controller->joystickBinders.back();
 }
-
-JoystickBinder& JoystickBinder::whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
-    this->stick = stick;
-    this->threshold = threshold;
+JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
     this->command = cmd;
     edge = Edge::WhileTrue;
     controller->joystickBinders.emplace_back(*this);

@@ -10,11 +10,11 @@ ExampleSubsystem* exampleSub = new ExampleSubsystem();
 
 // Add Any Button Bindings Here
 void configureBindings() {
-    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { 
-        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS");
-     }));
-    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
-    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_X, new Pulse(exampleSub));
+    controller.LeftJoyY(-20).onFalse(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 8, "Stick<-20"); }));
+    controller.Y().onTrue(new InstantCommand([] { exampleSub->forward(); }));
+    controller.Y().onFalse(new InstantCommand([] { exampleSub->stop(); }));
+    controller.A().onTrue(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS"); }));
+    controller.X().onTrue(new Pulse(exampleSub));
 }
 
 
@@ -85,12 +85,15 @@ void autonomous() {}
  */
 void opcontrol() {
     while (true) {
+        static int lastTick = pros::millis();
+        double robotTickSpeed = pros::millis() - lastTick;
+
         pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(scheduler.size()));
         pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Default Size: %3d", static_cast<int>(scheduler.defaultSize()));
         pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
-        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", globalVar::pulse::count);
-        pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %3d", globalVar::pulse::position);
         pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "robot tick: %3d", robotTickSpeed);
 
 
         // DO NOT Modify the code below

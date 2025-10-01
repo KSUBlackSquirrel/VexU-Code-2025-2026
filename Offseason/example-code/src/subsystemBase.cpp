@@ -1,5 +1,3 @@
-// SubsystemBase.cpp
-// Implementation of SubsystemBase class with direct scheduler registration
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/scheduler.h"
 

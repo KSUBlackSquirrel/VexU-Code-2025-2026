@@ -53,8 +53,6 @@ const static pros::MotorGears motorColor = pros::MotorGearset::red;
 namespace globalVar {
 
 namespace pulse {
-static int count = 0;
-static double position = 0.0;
 
 } // namespace pulse
 

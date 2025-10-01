@@ -13,8 +13,24 @@ class JoystickBinder;
 class Controller : public pros::Controller {
 public:
     Controller(pros::controller_id_e_t id, Scheduler* sch);
-    ButtonBinder setButtonCommand();
-    JoystickBinder setJoystickCommand();
+    ButtonBinder A();
+    ButtonBinder B();
+    ButtonBinder X();
+    ButtonBinder Y();
+    ButtonBinder Right();
+    ButtonBinder Down();
+    ButtonBinder Up();
+    ButtonBinder Left();
+    ButtonBinder L1();
+    ButtonBinder L2();
+    ButtonBinder R1();
+    ButtonBinder R2();
+
+    JoystickBinder LeftJoyY(int threshold);
+    JoystickBinder LeftJoyX(int threshold);
+    JoystickBinder RightJoyY(int threshold);
+    JoystickBinder RightJoyX(int threshold);
+
     void poll();
 
     std::array<bool, 12> prevButtonStates;
@@ -27,10 +43,10 @@ enum class Edge { None, Rising, Falling, WhileTrue };
 
 class ButtonBinder {
 public:
-    ButtonBinder(Controller* ctrl);
-    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
-    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd);
-    ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
+    ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn);
+    ButtonBinder& onTrue(const CommandBase* cmd);
+    ButtonBinder& onFalse(const CommandBase* cmd);
+    ButtonBinder& whileTrue(const CommandBase* cmd);
     void poll();
 
 private:
@@ -44,10 +60,10 @@ private:
 
 class JoystickBinder {
 public:
-    JoystickBinder(Controller* ctrl);
-    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
-    JoystickBinder& onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
-    JoystickBinder& whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold);
+    JoystickBinder& onTrue(const CommandBase* cmd);
+    JoystickBinder& onFalse(const CommandBase* cmd);
+    JoystickBinder& whileTrue(const CommandBase* cmd);
     void poll();
 
 private:

@@ -1,9 +1,3 @@
-test everything;
-sub periodic
-controller binding
-command
-InstantCommand
-
 change how the main loop waits
 
 work on default command function

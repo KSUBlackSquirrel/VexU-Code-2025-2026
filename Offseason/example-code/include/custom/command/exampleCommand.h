@@ -17,8 +17,10 @@ public:
         
         if (exampleSubsystem->getPosition() >= pulseLen) {
             exampleSubsystem->backward();
+            count++;
         } else if (exampleSubsystem->getPosition() <= -pulseLen) {
             exampleSubsystem->forward();
+            count++;
         }
     }
 
@@ -41,7 +43,7 @@ public:
 
 private:
     ExampleSubsystem* exampleSubsystem;
-    uint16_t pulseLen = 1500.0;
+    double pulseLen = 300.0;
     uint8_t count;
 };
 

@@ -7,7 +7,8 @@
 class ExampleSubsystem : public SubsystemBase {
     public:
         inline ExampleSubsystem() : motor(globalConst::example::motorId, globalConst::example::motorColor) {
-            motor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+            motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
         }
 
         inline void forward() {
@@ -27,9 +28,15 @@ class ExampleSubsystem : public SubsystemBase {
         }
 
         inline void periodic() override {
-            globalVar::pulse::count += 1;
-            globalVar::pulse::position = motor.get_position();
+            position = getPosition();
+            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count);
+
+            std::cout << '\r' << count << '\n';
+            std::cout << '\r' << position << '\n';
         }
+
+        int count = 0;
+        double position = 0;
 
     private:
         pros::Motor motor;
