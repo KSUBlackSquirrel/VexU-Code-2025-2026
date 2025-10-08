@@ -9,48 +9,48 @@
 class DriveSubsystem : public SubsystemBase {
     public:
         DriveSubsystem()
-            : throttle_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
-            steer_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
-            left_motor_group(globalConst::drive::leftMotorsID, globalConst::drive::driveTrainColor),
-            right_motor_group(globalConst::drive::rightMotorsID, globalConst::drive::driveTrainColor),
-            drivetrain(&left_motor_group, &right_motor_group, globalConst::drive::wheelTrack, globalConst::drive::wheelDiameter, globalConst::drive::wheelRPM, globalConst::drive::horizontalDrift),
-            sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
-            lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
-            angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
-            chassis(drivetrain, lateral_controller, angular_controller, sensors, &throttle_curve, &steer_curve)
+            : m_throttle_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            m_steer_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            m_left_motor_group(globalConst::drive::kLeftMotorsID, globalConst::drive::kDriveTrainColor),
+            m_right_motor_group(globalConst::drive::kRightMotorsID, globalConst::drive::kDriveTrainColor),
+            m_drivetrain(&m_left_motor_group, &m_right_motor_group, globalConst::drive::kWheelTrack, globalConst::drive::kWheelDiameter, globalConst::drive::kWheelRPM, globalConst::drive::kHorizontalDrift),
+            m_sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
+            m_lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
+            m_angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
+            m_chassis(m_drivetrain, m_lateral_controller, m_angular_controller, m_sensors, &m_throttle_curve, &m_steer_curve)
         {
-            chassis.calibrate(); // calibrate sensors
+            m_chassis.calibrate(); // calibrate sensors
         }
 
         inline lemlib::Pose pos(){
-            return chassis.getPose();
+            return m_chassis.getPose();
         }
 
         inline void tankDrive(Controller* controller, bool inverted){
-            chassis.tank(
-                inverted ? -controller->get_analog(globalConst::drive::rightStickY) : controller->get_analog(globalConst::drive::leftStickY),
-                inverted ?  -controller->get_analog(globalConst::drive::leftStickY) : controller->get_analog(globalConst::drive::rightStickY));
+            m_chassis.tank(
+                inverted ? -controller->get_analog(globalConst::drive::kRightStickY) : controller->get_analog(globalConst::drive::kLeftStickY),
+                inverted ?  -controller->get_analog(globalConst::drive::kLeftStickY) : controller->get_analog(globalConst::drive::kRightStickY));
         }
 
     private:
         // input curve for throttle and steer inputs during driver control
-        lemlib::ExpoDriveCurve throttle_curve;
-        lemlib::ExpoDriveCurve steer_curve;
+        lemlib::ExpoDriveCurve m_throttle_curve;
+        lemlib::ExpoDriveCurve m_steer_curve;
 
-        pros::MotorGroup left_motor_group;
-        pros::MotorGroup right_motor_group;
-        lemlib::Drivetrain drivetrain;
+        pros::MotorGroup m_left_motor_group;
+        pros::MotorGroup m_right_motor_group;
+        lemlib::Drivetrain m_drivetrain;
 
         // odometry settings
-        lemlib::OdomSensors sensors;
+        lemlib::OdomSensors m_sensors;
 
         // lateral PID controller
-        lemlib::ControllerSettings lateral_controller;
+        lemlib::ControllerSettings m_lateral_controller;
         // angular PID controller
-        lemlib::ControllerSettings angular_controller;
+        lemlib::ControllerSettings m_angular_controller;
 
         // create the chassis
-        lemlib::Chassis chassis;
+        lemlib::Chassis m_chassis;
 };
 
-#endif
+#endif // DRIVESUBSYSTEM_H_

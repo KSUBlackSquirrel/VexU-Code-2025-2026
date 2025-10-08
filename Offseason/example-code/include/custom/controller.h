@@ -1,5 +1,5 @@
-#ifndef CONTROLLER_HPP_
-#define CONTROLLER_HPP_
+#ifndef CONTROLLER_H_
+#define CONTROLLER_H_
 
 class Scheduler;
 #include "custom/command/commandBase.h"
@@ -33,9 +33,9 @@ public:
 
     void poll();
 
-    std::vector<ButtonBinder> buttonBinders;
-    std::vector<JoystickBinder> joystickBinders;
-    Scheduler* scheduler;
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    Scheduler* m_scheduler;
 };
 
 enum class Edge { None, Rising, Falling, WhileTrue };
@@ -49,11 +49,11 @@ public:
     void poll();
 
 private:
-    Controller* controller;
-    pros::controller_digital_e_t button;
-    const CommandBase* command;
-    Edge edge;
-    CommandBase* runningCommand;
+    Controller* m_controller;
+    pros::controller_digital_e_t m_button;
+    const CommandBase* km_command;
+    Edge m_edge;
+    CommandBase* m_runningCommand;
 };
 
 
@@ -66,16 +66,16 @@ public:
     void poll();
 
 private:
-    Controller* controller;
-    pros::controller_analog_e_t stick;
-    int threshold;
-    const CommandBase* command;
-    bool prev;
-    Edge edge;
-    CommandBase* runningCommand;
+    Controller* m_controller;
+    pros::controller_analog_e_t m_stick;
+    int m_threshold;
+    const CommandBase* km_command;
+    bool m_prev;
+    Edge m_edge;
+    CommandBase* m_runningCommand;
 };
 
 
 
 #include "custom/scheduler.h"
-#endif //CONTROLLER_HPP_
+#endif // CONTROLLER_H_

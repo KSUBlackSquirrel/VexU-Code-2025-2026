@@ -7,34 +7,43 @@
 class Pulse : public CommandBase {
 public:
     Pulse(ExampleSubsystem* exampleSub) { 
-        exampleSubsystem = exampleSub;
-        addRequirements(exampleSubsystem);
-        count = 0;
+        m_exampleSubsystem = exampleSub;
+        addRequirements(m_exampleSubsystem);
+    }
+    
+    inline void initialize() override {
+        m_count = 0;
+        if (m_exampleSubsystem->getPosition() > m_pulseLen) {
+            m_exampleSubsystem->backward();
+            m_movingForward = false;
+        } else {
+            m_exampleSubsystem->forward();
+            m_movingForward = true;
+        }
     }
 
     inline void execute() override {
         uint32_t currentTime = pros::millis();
+        double position = m_exampleSubsystem->getPosition();
         
-        if (exampleSubsystem->getPosition() >= pulseLen) {
-            exampleSubsystem->backward();
-            count++;
-        } else if (exampleSubsystem->getPosition() <= -pulseLen) {
-            exampleSubsystem->forward();
-            count++;
+        if (position >= m_pulseLen && m_movingForward) {
+            m_exampleSubsystem->backward();
+            m_movingForward = false;
+            m_count++;
+        } else if (position <= -m_pulseLen && !m_movingForward) {
+            m_exampleSubsystem->forward();
+            m_movingForward = true;
+            m_count++;
         }
+        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %d", m_count);
     }
 
-    inline void end() override {
-        exampleSubsystem->stop();
-    }
-
-    inline void interrupted() override {
-        printf("pulse stopped\n");
-        exampleSubsystem->stop();
+    inline void end(bool interrupted) override {
+        m_exampleSubsystem->stop();
     }
 
     inline bool isFinished() override {
-        return count > 8;
+        return m_count > 8;
     }
 
     inline CommandBase* clone() const override {
@@ -42,9 +51,10 @@ public:
     }
 
 private:
-    ExampleSubsystem* exampleSubsystem;
-    double pulseLen = 300.0;
-    uint8_t count = 0;
+    ExampleSubsystem* m_exampleSubsystem;
+    double m_pulseLen = 300.0;
+    uint8_t m_count = 0;
+    bool m_movingForward = true;
 };
 
-#endif
+#endif // EXAMPLECOMMAND_H_

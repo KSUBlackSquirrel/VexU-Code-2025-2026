@@ -1,20 +1,20 @@
 #include "main.h"
 
-static Scheduler scheduler;
-
-Controller controller(globalConst::drive::mainControllerID, &scheduler);
+Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
 
 // Add Subsystems Here
-ExampleSubsystem* exampleSub = new ExampleSubsystem();
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+
+// Default commands
+std::unique_ptr<Hold> holdCommand = std::make_unique<Hold>(exampleSub.get());
 
 
 // Add Any Button Bindings Here
 void configureBindings() {
-    controller.LeftJoyY(-20).onFalse(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 8, "Stick<-20"); }));
-    controller.Y().onTrue(new InstantCommand([] { exampleSub->forward(); }));
-    controller.Y().onFalse(new InstantCommand([] { exampleSub->stop(); }));
-    controller.A().onTrue(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS"); }));
-    controller.X().onTrue(new Pulse(exampleSub));
+    controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
+    controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+
+    controller.X().onTrue(new Pulse(exampleSub.get()));
 }
 
 
@@ -32,11 +32,13 @@ void configureBindings() {
  */
 void initialize() {
     // DO NOT Modify the code below
-    SubsystemBase::setScheduler(&scheduler); // Enable auto-registration
+    SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().enable(); // Enable the scheduler
     configureBindings();
-    scheduler.registerController(&controller);
+    Scheduler::getInstance().registerController(&controller);
     // Add New Code Below
-
+    // exampleSub->setDefaultCommand(holdCommand.get());
 }
 
 /**
@@ -44,7 +46,19 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {}
+void disabled() { 
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().disable();
+    while (true) {
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        
+        Scheduler::getInstance().run();
+        pros::delay(20);
+    }
+}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -55,7 +69,10 @@ void disabled() {}
  * This task will exit when the robot is enabled and autonomous or opcontrol
  * starts.
  */
-void competition_initialize() {}
+void competition_initialize() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().enable();
+}
 
 /**
  * Runs the user autonomous code. This function will be started in its own task
@@ -68,7 +85,19 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().enable();
+    while (true) {
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        
+        Scheduler::getInstance().run();
+        pros::delay(20);
+    }
+}
 
 /**
  * Runs the operator control code. This function will be started in its own task
@@ -84,21 +113,22 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().enable();
+    
     while (true) {
-        static int lastTick = pros::millis();
-        double robotTickSpeed = pros::millis() - lastTick;
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
 
-        pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(scheduler.size()));
-        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Default Size: %3d", static_cast<int>(scheduler.defaultSize()));
-        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
-        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
-        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
-        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "robot tick: %3d", robotTickSpeed);
+        pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);
 
 
-        // DO NOT Modify the code below
-        scheduler.run();
-        // TODO change to count and run after a min time ms and print the full wait
-        pros::delay(30);
+        Scheduler::getInstance().run();
+        pros::delay(20);
     }
 };

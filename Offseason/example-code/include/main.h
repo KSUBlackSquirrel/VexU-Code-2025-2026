@@ -42,10 +42,10 @@
 #include "custom/scheduler.h"
 #include "custom/controller.h"
 #include "custom/globals.h"
+#include "custom/watchdog.h"
 
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/command/commandBase.h"
-#include "custom/command/instantCommand.h"
 
 /**
  * You should add more #includes here
@@ -54,6 +54,7 @@
 #include "custom/subsystem/driveSubsystem.h"
 
 #include "custom/command/exampleCommand.h"
+#include "custom/command/exampleDefaultCommand.h"
 #include "custom/subsystem/exampleSubsystem.h"
 
 

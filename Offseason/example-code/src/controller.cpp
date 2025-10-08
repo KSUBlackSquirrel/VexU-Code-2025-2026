@@ -3,7 +3,7 @@
 
 // Controller constructor: initializes the controller and binds it to a scheduler.
 Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
-    : pros::Controller(id), scheduler(sch) {}
+    : pros::Controller(id), m_scheduler(sch) {}
 
 // Create a new ButtonBinder for every available button on this controller
 ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
@@ -28,92 +28,92 @@ JoystickBinder Controller::RightJoyX(int threshold) { return JoystickBinder(this
 
 // Poll all binders to check for input events and schedule/cancel commands
 void Controller::poll() {
-    for (auto& binder : buttonBinders) binder.poll();
-    for (auto& binder : joystickBinders) binder.poll();
+    for (auto& binder : m_buttonBinders) binder.poll();
+    for (auto& binder : m_joystickBinders) binder.poll();
 }
 
 // ButtonBinder constructor: binds to a controller
 ButtonBinder::ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn)
-    : controller(ctrl), button(btn), command(nullptr), edge(Edge::None), runningCommand(nullptr) {}
+    : m_controller(ctrl), m_button(btn), km_command(nullptr), m_edge(Edge::None), m_runningCommand(nullptr) {}
 
 // Bind a command to button movement (rising edge, falling edge, or while held)
 ButtonBinder& ButtonBinder::onTrue(const CommandBase* cmd) {
-    command = cmd;
-    edge = Edge::Rising;
-    controller->buttonBinders.emplace_back(*this);
-    return controller->buttonBinders.back();
+    km_command = cmd;
+    m_edge = Edge::Rising;
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return m_controller->m_buttonBinders.back();
 }
 ButtonBinder& ButtonBinder::onFalse(const CommandBase* cmd) {
-    command = cmd;
-    edge = Edge::Falling;
-    controller->buttonBinders.emplace_back(*this);
-    return controller->buttonBinders.back();
+    km_command = cmd;
+    m_edge = Edge::Falling;
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return m_controller->m_buttonBinders.back();
 }
 ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
-    command = cmd;
-    edge = Edge::WhileTrue;
-    controller->buttonBinders.emplace_back(*this);
-    return controller->buttonBinders.back();
+    km_command = cmd;
+    m_edge = Edge::WhileTrue;
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return m_controller->m_buttonBinders.back();
 }
 
 // Poll the button for events and schedule/cancel commands as needed
 void ButtonBinder::poll() {
-    if (edge == Edge::Rising) {
-        bool curr = controller->get_digital_new_press(button);
-        if (curr) controller->scheduler->addCommand(command);
+    if (m_edge == Edge::Rising) {
+        bool curr = m_controller->get_digital_new_press(m_button);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
     }
-    if (edge == Edge::Falling) {
-        bool curr = controller->get_digital_new_release(button);
-        if (curr) controller->scheduler->addCommand(command);
+    if (m_edge == Edge::Falling) {
+        bool curr = m_controller->get_digital_new_release(m_button);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
     }
-    if (edge == Edge::WhileTrue) {
-        bool curr = controller->get_digital(button);
-        if (curr && !runningCommand) {
-            runningCommand = controller->scheduler->addCommand(command);
-        } else if (!curr && runningCommand) {
-            controller->scheduler->cancelCommand(runningCommand);
-            runningCommand = nullptr;
+    if (m_edge == Edge::WhileTrue) {
+        bool curr = m_controller->get_digital(m_button);
+        if (curr && !m_runningCommand) {
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+        } else if (!curr && m_runningCommand) {
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            m_runningCommand = nullptr;
         }
     }
 }
 
 // JoystickBinder constructor: binds to a controller
 JoystickBinder::JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold)
-    : controller(ctrl), stick(stick), threshold(threshold), command(nullptr), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+    : m_controller(ctrl), m_stick(stick), m_threshold(threshold), km_command(nullptr), m_edge(Edge::None), m_prev(false), m_runningCommand(nullptr) {}
 
 // Bind a command to joystick movement (rising edge, falling edge, or while held)
 JoystickBinder& JoystickBinder::onTrue(const CommandBase* cmd) {
-    this->command = cmd;
-    edge = Edge::Rising;
-    controller->joystickBinders.emplace_back(*this);
-    return controller->joystickBinders.back();
+    this->km_command = cmd;
+    m_edge = Edge::Rising;
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return m_controller->m_joystickBinders.back();
 }
 JoystickBinder& JoystickBinder::onFalse(const CommandBase* cmd) {
-    this->command = cmd;
-    edge = Edge::Falling;
-    controller->joystickBinders.emplace_back(*this);
-    return controller->joystickBinders.back();
+    this->km_command = cmd;
+    m_edge = Edge::Falling;
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return m_controller->m_joystickBinders.back();
 }
 JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
-    this->command = cmd;
-    edge = Edge::WhileTrue;
-    controller->joystickBinders.emplace_back(*this);
-    return controller->joystickBinders.back();
+    this->km_command = cmd;
+    m_edge = Edge::WhileTrue;
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return m_controller->m_joystickBinders.back();
 }
 
 // Poll the joystick for events and schedule/cancel commands as needed
 void JoystickBinder::poll() {
-    int curr = controller->get_analog(stick);
-    bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
-    if (edge == Edge::Rising && above && !prev) controller->scheduler->addCommand(command);
-    if (edge == Edge::Falling && !above && prev) controller->scheduler->addCommand(command);
-    if (edge == Edge::WhileTrue) {
-        if (above && !runningCommand) {
-            runningCommand = controller->scheduler->addCommand(command);
-        } else if (!above && runningCommand) {
-            controller->scheduler->cancelCommand(runningCommand);
-            runningCommand = nullptr;
+    int curr = m_controller->get_analog(m_stick);
+    bool above = (m_threshold >= 0) ? (curr >= m_threshold) : (curr <= m_threshold);
+    if (m_edge == Edge::Rising && above && !m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (m_edge == Edge::Falling && !above && m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (m_edge == Edge::WhileTrue) {
+        if (above && !m_runningCommand) {
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+        } else if (!above && m_runningCommand) {
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            m_runningCommand = nullptr;
         }
     }
-    prev = above;
+    m_prev = above;
 }

@@ -6,46 +6,46 @@
 
 class ExampleSubsystem : public SubsystemBase {
     public:
-        inline ExampleSubsystem() : motor(globalConst::example::motorId, globalConst::example::motorColor) {
-            motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-            motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+        inline ExampleSubsystem() : m_motor(globalConst::example::kMotorId, globalConst::example::kMotorColor) {
+            m_motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            m_motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
         }
 
         inline void forward() {
-            motor.move_velocity(globalConst::MotorTools::percentToVelocity(30, globalConst::example::motorColor));
+            m_motor.move_velocity(globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
         }
 
         inline void backward() {
-            motor.move_velocity(-globalConst::MotorTools::percentToVelocity(30, globalConst::example::motorColor));
+            m_motor.move_velocity(-globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
         }
 
         inline void stop() {
-            motor.brake();
+            m_motor.brake();
+        }
+
+        inline void setPosition(int val, int persent) {
+            m_motor.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
         }
 
         inline double getPosition() {
-            return motor.get_position();
+            return m_motor.get_position();
         }
 
         inline void periodic() override {
-            position = getPosition();
+            m_position = getPosition();
 
-            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count); // try %f for float and not %d for int
-            pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %3d", position);
+            pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %f", m_position);
             
-            printf("\n\n\n%3d\n", count);
-            printf("%3d\n", position);
+            printf("%3d\n", m_position);
 
-            std::cout << count << '\n';
-            std::cout << position << '\n';
+            std::cout << m_position << '\n';
         }
 
         
     private:
-        pros::Motor motor;
-        int count = 0;
-        double position = 0;
+        pros::Motor m_motor;
+        double m_position = 0;
 
 };
 
-#endif
+#endif // EXAMPLESUBSYSTEM_H_

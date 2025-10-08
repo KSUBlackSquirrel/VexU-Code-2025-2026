@@ -11,18 +11,16 @@ class SubsystemBase;
 class DriveCommand: public CommandBase {
 public:
     DriveCommand(DriveSubsystem* sub, Controller* ctrl) { 
-        subsystem = sub;
-        controller = ctrl;
-        addRequirements(subsystem);
+        m_subsystem = sub;
+        m_controller = ctrl;
+        addRequirements(m_subsystem);
     }
 
     inline void execute() override {
-        subsystem->tankDrive(controller, false);
+        m_subsystem->tankDrive(m_controller, false);
     }
 
-    inline void end() override {}
-
-    inline void interrupted() override {}
+    inline void end(bool interrupted) override {}
 
     inline bool isFinished() override { return false; }
 
@@ -31,8 +29,8 @@ public:
     }
 
 private:
-    DriveSubsystem* subsystem;
-    Controller* controller;
+    DriveSubsystem* m_subsystem;
+    Controller* m_controller;
 };
 
-#endif
+#endif // DRIVECOMMAND_H_
