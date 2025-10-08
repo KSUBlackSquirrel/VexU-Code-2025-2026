@@ -6,15 +6,55 @@ Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInst
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
 
 // Default commands
-std::unique_ptr<Hold> holdCommand = std::make_unique<Hold>(exampleSub.get());
+std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+
+// Example command variations
+std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
+std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
+std::unique_ptr<CommandBase> runForCommand = std::make_unique<RunForCommand>( new InstantCommand([]{exampleSub->forward();}, exampleSub.get()), 1.5 );
+std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+    []() { exampleSub->forward(); },     // initialize
+    []() { /* execute logic */ },        // execute  
+    [](bool interrupted) { exampleSub->stop(); }, // end
+    []() { return false; },              // isFinished
+    std::initializer_list<SubsystemBase*>{exampleSub.get()} // requirements
+);
+// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+//     []() { exampleSub->forward(); },     // initialize
+//     []() { /* execute logic */ },        // execute  
+//     [](bool interrupted) { exampleSub->stop(); }, // end
+//     []() { return false; },              // isFinished
+//     exampleSub.get() // requirements
+// );
+
+std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
+std::unique_ptr<CommandBase> ignoringDisableCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+
 
 
 // Add Any Button Bindings Here
 void configureBindings() {
+    // Basic InstantCommands
     controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
     controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
 
-    controller.X().onTrue(new Pulse(exampleSub.get()));
+    // Original Pulse command
+    controller.X().onTrue(pulseCommand.get());
+    
+    // TimeoutCommand - Pulse that automatically stops after 3 seconds
+    controller.A().onTrue(timeoutCommand.get());
+    
+    // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
+    controller.B().onTrue(waitCommand.get());
+    
+    // RunForCommand - Runs forward command for 1.5 seconds then stops
+    controller.UP().onTrue(runForCommand.get());
+    
+    // FunctionalCommand - Custom command built with lambdas
+    controller.DOWN().onTrue(functionalCommand.get());
 }
 
 
@@ -34,11 +74,11 @@ void initialize() {
     // DO NOT Modify the code below
     SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
     Scheduler::getInstance().setRobotEnabled(false);
-    Scheduler::getInstance().enable(); // Enable the scheduler
+    Scheduler::getInstance().enable();
     configureBindings();
     Scheduler::getInstance().registerController(&controller);
     // Add New Code Below
-    // exampleSub->setDefaultCommand(holdCommand.get());
+    exampleSub->setDefaultCommand(ignoringDisableCommand.get());
 }
 
 /**
@@ -48,7 +88,7 @@ void initialize() {
  */
 void disabled() { 
     Scheduler::getInstance().setRobotEnabled(false);
-    Scheduler::getInstance().disable();
+    Scheduler::getInstance().cancelAll();
     while (true) {
         static uint32_t lastTick = pros::millis();
         uint32_t currentTick = pros::millis();
@@ -71,7 +111,7 @@ void disabled() {
  */
 void competition_initialize() {
     Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().enable();
+    Scheduler::getInstance().cancelAll();
 }
 
 /**
@@ -87,7 +127,7 @@ void competition_initialize() {
  */
 void autonomous() {
     Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().enable();
+    Scheduler::getInstance().cancelAll();
     while (true) {
         static uint32_t lastTick = pros::millis();
         uint32_t currentTick = pros::millis();
@@ -114,7 +154,7 @@ void autonomous() {
  */
 void opcontrol() {
     Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().enable();
+    Scheduler::getInstance().cancelAll();
     
     while (true) {
         static uint32_t lastTick = pros::millis();
@@ -123,6 +163,11 @@ void opcontrol() {
         lastTick = currentTick;
 
         pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", exampleSub.get()->getCurrentCommand()->getName());
+        pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %s", cancelIncomingCommand.get()->getInterruptionBehavior());
+        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %s", ignoringDisableCommand.get()->getInterruptionBehavior());
         // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
         // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
         pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);

@@ -10,10 +10,10 @@ ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGI
 ButtonBinder Controller::B() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_B); }
 ButtonBinder Controller::X() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_X); }
 ButtonBinder Controller::Y() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_Y); }
-ButtonBinder Controller::Right() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
-ButtonBinder Controller::Down() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
-ButtonBinder Controller::Up() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
-ButtonBinder Controller::Left() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
+ButtonBinder Controller::RIGHT() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
+ButtonBinder Controller::DOWN() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
+ButtonBinder Controller::UP() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
+ButtonBinder Controller::LEFT() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
 ButtonBinder Controller::L1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L1); }
 ButtonBinder Controller::L2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L2); }
 ButtonBinder Controller::R1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R1); }

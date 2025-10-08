@@ -17,10 +17,10 @@ public:
     ButtonBinder B();
     ButtonBinder X();
     ButtonBinder Y();
-    ButtonBinder Right();
-    ButtonBinder Down();
-    ButtonBinder Up();
-    ButtonBinder Left();
+    ButtonBinder RIGHT();
+    ButtonBinder DOWN();
+    ButtonBinder UP();
+    ButtonBinder LEFT();
     ButtonBinder L1();
     ButtonBinder L2();
     ButtonBinder R1();

@@ -14,31 +14,31 @@ added suffix 'm_' for all member variables and 'k' for all constants
 
 ## Needs Testing
 ### command class:
-- getName()
-- setInterruptible()/getInterruptionBehavior()
-- setRunsWhenDisabled()/runsWhenDisabled()
+- getName() opcontrol print
+- getInterruptionBehavior() opcontrol print
+- ignoringDisable() ignoringDisableCommand should persist after comp mode
 - setComposed()/isComposed() AFTER andThen() is created
-- addRequirements()
-- getRequiredSubsystems()
+- addRequirements() [DONE]
+- getRequiredSubsystems() opcontrol print
 - DECORATORS
-    - TimeoutCommand()
-    - NamedCommand()
-    - WaitCommand()
-    - RunForCommand()
-    - FunctionalCommand()
-    - InstantCommand() done
+    - TimeoutCommand() added in confBind
+    - NamedCommand() added in confBind
+    - WaitCommand() added in confBind
+    - RunForCommand() added in confBind
+    - FunctionalCommand() added in confBind
+    - InstantCommand() [DONE]
 - commands taking many subsystems
     - InstantCommand
-    - FunctionalCommand
+    - FunctionalCommand commented out
     - StartEndCommand
     - . . .
 
 
 ### subsystem class:
-- setDefaultCommand()
-- getCurrentCommand()
-- setScheduler()
-- registerPendingSubsystems()
+- setDefaultCommand() / added in initialize and controller X should interrupt
+- getCurrentCommand() opcontrol print
+- setScheduler() [DONE]
+- registerPendingSubsystems() [DONE]
 - FACTORY METHODS
     - runOnce()
     - run()
@@ -47,26 +47,26 @@ added suffix 'm_' for all member variables and 'k' for all constants
 
 
 ### scheduler:
-- setDefaultCommand()
+- setDefaultCommand() it is in initialize -> holdCommand
 - cancel()
 - cancelAll()
-- enable() done
-- disable() done
-- isEnabled() done
-- isScheduled()
-- requiring()
+- enable() [DONE]
+- disable() [DONE]
+- isEnabled() [DONE]
+- isScheduled() [DONE]
+- requiring() [DONE]
 - Command event callbacks
     - onCommandInitialize()
     - onCommandExecute()
     - onCommandFinish()
     - onCommandInterrupt()
-- setRobotEnabled()
-- isRobotEnabled() done
+- setRobotEnabled() [DONE]
+- isRobotEnabled() [DONE]
 - run()
-    - initCommand() done
-    - interruptCommand() done
-    - finishCommand() done
-    - requirementsFree()
+    - initCommand() [DONE]
+    - interruptCommand() [DONE]
+    - finishCommand() [DONE]
+    - requirementsFree() [DONE]
     - areCommandsInterruptible()
 
 
