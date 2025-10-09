@@ -35,7 +35,7 @@ public:
             m_movingForward = true;
             m_count++;
         }
-        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %d", m_count);
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %d", m_count);
     }
 
     inline void end(bool interrupted) override {

@@ -72,8 +72,8 @@ inline std::unique_ptr<CommandBase> SubsystemBase::run(std::function<void()> act
         action,     // onExecute (runs every cycle)
         nullptr,    // onEnd
         nullptr,    // isFinished (defaults to false - runs until interrupted)
-        "Run",      // name
-        this        // subsystem
+        this,       // subsystem
+        "Run"       // name
     ));
 }
 
@@ -84,8 +84,8 @@ inline std::unique_ptr<CommandBase> SubsystemBase::runUntil(std::function<void()
         action,     // onExecute (runs every cycle)
         nullptr,    // onEnd
         condition,  // isFinished (stops when condition is true)
-        "RunUntil", // name
-        this        // subsystem
+        this,       // subsystem
+        "RunUntil"  // name
     ));
 }
 

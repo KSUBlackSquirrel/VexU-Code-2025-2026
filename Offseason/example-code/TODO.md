@@ -14,29 +14,27 @@ added suffix 'm_' for all member variables and 'k' for all constants
 
 ## Needs Testing
 ### command class:
-- getName() opcontrol print
-- getInterruptionBehavior() opcontrol print
+- getName() opcontrol [DONE]
+- getInterruptionBehavior() [DONE]
 - ignoringDisable() ignoringDisableCommand should persist after comp mode
 - setComposed()/isComposed() AFTER andThen() is created
 - addRequirements() [DONE]
-- getRequiredSubsystems() opcontrol print
+- getRequiredSubsystems() [DONE]
 - DECORATORS
-    - TimeoutCommand() added in confBind
-    - NamedCommand() added in confBind
-    - WaitCommand() added in confBind
-    - RunForCommand() added in confBind
-    - FunctionalCommand() added in confBind
+    - TimeoutCommand() [DONE]
+    - NamedCommand() [DONE]
+    - WaitCommand() [DONE]
+    - RunForCommand() [DONE]
+    - FunctionalCommand() [DONE]
     - InstantCommand() [DONE]
 - commands taking many subsystems
-    - InstantCommand
-    - FunctionalCommand commented out
-    - StartEndCommand
-    - . . .
+    - InstantCommand [DONE]
+    - FunctionalCommand [DONE]
 
 
 ### subsystem class:
-- setDefaultCommand() / added in initialize and controller X should interrupt
-- getCurrentCommand() opcontrol print
+- setDefaultCommand() [DONE]
+- getCurrentCommand() [DONE]
 - setScheduler() [DONE]
 - registerPendingSubsystems() [DONE]
 - FACTORY METHODS
@@ -47,7 +45,7 @@ added suffix 'm_' for all member variables and 'k' for all constants
 
 
 ### scheduler:
-- setDefaultCommand() it is in initialize -> holdCommand
+- setDefaultCommand() [DONE]
 - cancel()
 - cancelAll()
 - enable() [DONE]

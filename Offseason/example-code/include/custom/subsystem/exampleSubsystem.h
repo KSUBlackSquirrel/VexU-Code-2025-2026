@@ -34,7 +34,7 @@ class ExampleSubsystem : public SubsystemBase {
         inline void periodic() override {
             m_position = getPosition();
 
-            pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %f", m_position);
+            // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %f", m_position);
             
             printf("%3d\n", m_position);
 

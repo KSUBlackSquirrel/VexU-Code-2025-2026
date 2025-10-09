@@ -10,6 +10,7 @@
 #include <functional>
 #include <typeinfo>
 #include <cstdlib>
+#include <initializer_list>
 #ifdef __GNUG__
     #include <cxxabi.h>
 #endif // __GNUG__
@@ -261,8 +262,8 @@ public:
         std::function<void()> onExecute,
         std::function<void(bool)> onEnd,
         std::function<bool()> isFinished,
-        std::string name = "Functional",
-        std::initializer_list<SubsystemBase*> subsystems = {}
+        std::initializer_list<SubsystemBase*> subsystems = {},
+        std::string name = "Functional"
     ) : 
         m_onInit(onInit),
         m_onExecute(onExecute),
@@ -275,10 +276,10 @@ public:
         std::function<void()> onExecute,
         std::function<void(bool)> onEnd,
         std::function<bool()> isFinished,
-        std::string name,
-        SubsystemBase* subsystem
+        SubsystemBase* subsystem,
+        std::string name = "Functional"
     ) :
-        FunctionalCommand(onInit, onExecute, onEnd, isFinished, name, {subsystem})
+        FunctionalCommand(onInit, onExecute, onEnd, isFinished, {subsystem}, name)
     {}
     
     void initialize() override { if (m_onInit) m_onInit(); }
@@ -289,9 +290,10 @@ public:
         return false; // Default to never finishing
     }
     CommandBase* clone() const override {
-        auto clone = new FunctionalCommand(m_onInit, m_onExecute, m_onEnd, m_isFinished, m_name);
-        // Copy requirements
-        for (auto* subsystem : getRequiredSubsystems()) clone->addRequirements(subsystem);
+        auto clone = new FunctionalCommand(m_onInit, m_onExecute, m_onEnd, m_isFinished, {}, m_name);
+        for (auto* subsystem : getRequiredSubsystems()) {
+            clone->addRequirements(subsystem);
+        }
         return clone;
     }
     std::string getName() const override { return m_name; }
