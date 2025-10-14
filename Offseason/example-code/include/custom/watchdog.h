@@ -7,6 +7,12 @@
 
 class Watchdog {
 public:
+    Watchdog() {}
+    static Watchdog& getInstance() {
+        static Watchdog instance;
+        return instance;
+    }
+    
     struct Epoch {
         std::string name;
         uint32_t timestamp;

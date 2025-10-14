@@ -5,6 +5,14 @@ Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInst
 // Add Subsystems Here
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
 
+// Example factory calls for CommandBase using ExampleSubsystem
+std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+
 // Default commands
 // std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
 
@@ -77,13 +85,19 @@ void initialize() {
 void disabled() { 
     Scheduler::getInstance().setRobotEnabled(false);
     Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
     while (true) {
+        watchdog.reset();
         static uint32_t lastTick = pros::millis();
         uint32_t currentTick = pros::millis();
         uint32_t deltaTime = currentTick - lastTick;
         lastTick = currentTick;
-        
+        watchdog.addEpoch("start");
+        for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+        watchdog.addEpoch("pre-scheduler");
         Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
         pros::delay(20);
     }
 }
@@ -116,13 +130,17 @@ void competition_initialize() {
 void autonomous() {
     Scheduler::getInstance().setRobotEnabled(true);
     Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
     while (true) {
+        watchdog.reset();
         static uint32_t lastTick = pros::millis();
         uint32_t currentTick = pros::millis();
         uint32_t deltaTime = currentTick - lastTick;
         lastTick = currentTick;
-        
+        watchdog.addEpoch("start");
         Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
         pros::delay(20);
     }
 }
@@ -143,8 +161,9 @@ void autonomous() {
 void opcontrol() {
     Scheduler::getInstance().setRobotEnabled(true);
     Scheduler::getInstance().cancelAll();
-    
+    Watchdog watchdog;
     while (true) {
+        watchdog.reset();
         static uint32_t lastTick = pros::millis();
         uint32_t currentTick = pros::millis();
         uint32_t deltaTime = currentTick - lastTick;
@@ -160,9 +179,10 @@ void opcontrol() {
         // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
         // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
         pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);
-
-
+        watchdog.addEpoch("pre-scheduler");
         Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
         pros::delay(20);
     }
 };

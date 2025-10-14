@@ -7,27 +7,22 @@
 - Command Decorators:
     - andThen(CommandBase* next);
 
-
-## Updated
-added suffix 'm_' for all member variables and 'k' for all constants
-
-
 ## Needs Testing
 ### command class:
 - getName() opcontrol [DONE]
 - getInterruptionBehavior() [DONE]
-- ignoringDisable() ignoringDisableCommand should persist after comp mode
+- ignoringDisable() *added test first*
 - setComposed()/isComposed() AFTER andThen() is created
 - addRequirements() [DONE]
 - getRequiredSubsystems() [DONE]
-- DECORATORS
+- DECORATORS [DONE]
     - TimeoutCommand() [DONE]
     - NamedCommand() [DONE]
     - WaitCommand() [DONE]
     - RunForCommand() [DONE]
     - FunctionalCommand() [DONE]
     - InstantCommand() [DONE]
-- commands taking many subsystems
+- commands taking many subsystems [DONE]
     - InstantCommand [DONE]
     - FunctionalCommand [DONE]
 
@@ -37,38 +32,43 @@ added suffix 'm_' for all member variables and 'k' for all constants
 - getCurrentCommand() [DONE]
 - setScheduler() [DONE]
 - registerPendingSubsystems() [DONE]
-- FACTORY METHODS
-    - runOnce()
-    - run()
-    - runUntil()
-    - runFor()
+- FACTORY METHODS *added test second*
+    - runOnce() *added*
+    - run() *added*
+    - runUntil() *added*
+    - runFor() *added*
 
 
 ### scheduler:
 - setDefaultCommand() [DONE]
-- cancel()
-- cancelAll()
+- cancel() [DONE]
+- cancelAll() *added test first*
 - enable() [DONE]
 - disable() [DONE]
 - isEnabled() [DONE]
 - isScheduled() [DONE]
 - requiring() [DONE]
-- Command event callbacks
-    - onCommandInitialize()
-    - onCommandExecute()
-    - onCommandFinish()
-    - onCommandInterrupt()
+- Command event callbacks [DONE]
+    - onCommandInitialize() [DONE]
+    - onCommandExecute() [DONE]
+    - onCommandFinish() [DONE]
+    - onCommandInterrupt() [DONE]
 - setRobotEnabled() [DONE]
 - isRobotEnabled() [DONE]
-- run()
+- run() [DONE]
     - initCommand() [DONE]
     - interruptCommand() [DONE]
     - finishCommand() [DONE]
     - requirementsFree() [DONE]
-    - areCommandsInterruptible()
+    - areCommandsInterruptible() [DONE]
 
 
 ### verify all watchdog functions
+addEpoch() *added*
+reset() *added*
+printEpochs() *added*
+getTotalTime() *added*
+hasSlowEpochs() *added*
 
 
 ## Continue
