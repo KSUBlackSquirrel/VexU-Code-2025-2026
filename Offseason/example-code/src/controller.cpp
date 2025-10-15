@@ -1,9 +1,38 @@
 #include "main.h"
+#include "custom/scheduler.h"
+#include <vector>
 
+// Static members for backup registration
+Scheduler* Controller::m_globalScheduler = nullptr;
+std::vector<Controller*> Controller::m_pendingControllers;
 
-// Controller constructor: initializes the controller and binds it to a scheduler.
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
 Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
-    : pros::Controller(id), m_scheduler(sch) {}
+    : pros::Controller(id), m_scheduler(sch) {
+    if (m_scheduler) {
+        m_scheduler->registerController(this);
+    } else if (m_globalScheduler) {
+        m_globalScheduler->registerController(this);
+    } else {
+        m_pendingControllers.push_back(this);
+    }
+}
+
+// Set the global scheduler reference for auto-registration
+void Controller::setScheduler(Scheduler* sch) {
+    m_globalScheduler = sch;
+    registerPendingControllers();
+}
+
+// Register any controllers created before scheduler was set
+void Controller::registerPendingControllers() {
+    if (m_globalScheduler) {
+        for (Controller* ctrl : m_pendingControllers) {
+            m_globalScheduler->registerController(ctrl);
+        }
+        m_pendingControllers.clear();
+    }
+}
 
 // Create a new ButtonBinder for every available button on this controller
 ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }

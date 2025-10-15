@@ -1,58 +1,42 @@
 #include "main.h"
 
-Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+// Forward declarations for robot functions
+extern void configureBindings();
+extern void robotInit();
+extern void robotDisabled();
+extern void robotCompInit();
+extern void robotAuto();
+extern void robotTeleop();
 
-// Add Subsystems Here
-std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+void run_helper(bool robotState, void (*funcState)()) {
+    std::string functionName = typeid(funcState).name();
+    Scheduler::getInstance().setRobotEnabled(robotState);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
 
-// Example factory calls for CommandBase using ExampleSubsystem
-std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
-std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start ["+functionName+"]");
+        
+        funcState();
 
-std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+        watchdog.addEpoch("pre-scheduler ["+functionName+"]");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler ["+functionName+"]");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
 
-// Default commands
-// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
-
-// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
-
-// Example command variations
-// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
-// std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
-// std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
-// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
-//     [](){ exampleSub->forward(); },     // initialize
-//     [](){ /* execute logic */ },        // execute  
-//     [](bool interrupted){ exampleSub->stop(); }, // end
-//     [](){ return false; },              // isFinished
-//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
-//     "Functional"                         // name
-// );
-// std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
-
-
-
-// Add Any Button Bindings Here
-void configureBindings() {
-    // Basic InstantCommands
-    // controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
-    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
-
-    // // Original Pulse command
-    // controller.X().onTrue(pulseCommand.get());
-    
-    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
-    // controller.A().onTrue(timeoutCommand.get());
-    
-    // // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
-    // controller.B().onTrue(waitCommand.get());
-    
-    // // FunctionalCommand - Custom command built with lambdas
-    // controller.DOWN().onTrue(functionalCommand.get());
+        // testing \/ \/ \/
+        char buffer[64];
+        snprintf(buffer, sizeof(buffer), "pre-scheduler [%s]: %lu", functionName.c_str(), static_cast<unsigned long>(deltaTime));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, buffer);
+        // testing ^ ^ ^
+    }
 }
-
 
 /**
  * This function runs once when the program starts. It sets up all controller bindings
@@ -67,14 +51,15 @@ void configureBindings() {
  * Keep this function fast—long operations here will block competition modes.
  */
 void initialize() {
-    // DO NOT Modify the code below
     SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    Controller::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    
     Scheduler::getInstance().setRobotEnabled(false);
     Scheduler::getInstance().enable();
+    
     configureBindings();
-    Scheduler::getInstance().registerController(&controller);
-    // Add New Code Below
-    // exampleSub->setDefaultCommand(holdCommand.get());
+
+    robotInit();
 }
 
 /**
@@ -83,23 +68,7 @@ void initialize() {
  * the robot is enabled, this task will exit.
  */
 void disabled() { 
-    Scheduler::getInstance().setRobotEnabled(false);
-    Scheduler::getInstance().cancelAll();
-    Watchdog watchdog;
-    while (true) {
-        watchdog.reset();
-        static uint32_t lastTick = pros::millis();
-        uint32_t currentTick = pros::millis();
-        uint32_t deltaTime = currentTick - lastTick;
-        lastTick = currentTick;
-        watchdog.addEpoch("start");
-        for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
-        watchdog.addEpoch("pre-scheduler");
-        Scheduler::getInstance().run();
-        watchdog.addEpoch("post-scheduler");
-        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
-        pros::delay(20);
-    }
+    run_helper(false, robotDisabled);
 }
 
 /**
@@ -112,8 +81,7 @@ void disabled() {
  * starts.
  */
 void competition_initialize() {
-    Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().cancelAll();
+    run_helper(true, robotCompInit);
 }
 
 /**
@@ -128,21 +96,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-    Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().cancelAll();
-    Watchdog watchdog;
-    while (true) {
-        watchdog.reset();
-        static uint32_t lastTick = pros::millis();
-        uint32_t currentTick = pros::millis();
-        uint32_t deltaTime = currentTick - lastTick;
-        lastTick = currentTick;
-        watchdog.addEpoch("start");
-        Scheduler::getInstance().run();
-        watchdog.addEpoch("post-scheduler");
-        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
-        pros::delay(20);
-    }
+    run_helper(true, robotAuto);
 }
 
 /**
@@ -159,30 +113,5 @@ void autonomous() {
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-    Scheduler::getInstance().setRobotEnabled(true);
-    Scheduler::getInstance().cancelAll();
-    Watchdog watchdog;
-    while (true) {
-        watchdog.reset();
-        static uint32_t lastTick = pros::millis();
-        uint32_t currentTick = pros::millis();
-        uint32_t deltaTime = currentTick - lastTick;
-        lastTick = currentTick;
-
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
-        // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
-        // // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %d", static_cast<int>(cancelIncomingCommand.get()->getInterruptionBehavior()));
-        // // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %d", static_cast<int>(ignoringDisableCommand.get()->getInterruptionBehavior()));
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
-        // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
-        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);
-        watchdog.addEpoch("pre-scheduler");
-        Scheduler::getInstance().run();
-        watchdog.addEpoch("post-scheduler");
-        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
-        pros::delay(20);
-    }
+    run_helper(true, robotTeleop);
 };

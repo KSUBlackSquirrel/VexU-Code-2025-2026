@@ -32,10 +32,16 @@ public:
     JoystickBinder RightJoyX(int threshold);
 
     void poll();
+    static void setScheduler(Scheduler* sch);
 
     std::vector<ButtonBinder> m_buttonBinders;
     std::vector<JoystickBinder> m_joystickBinders;
     Scheduler* m_scheduler;
+
+private:
+    static Scheduler* m_globalScheduler;
+    static std::vector<Controller*> m_pendingControllers;
+    static void registerPendingControllers();
 };
 
 enum class Edge { None, Rising, Falling, WhileTrue };

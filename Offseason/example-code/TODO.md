@@ -82,3 +82,4 @@ hasSlowEpochs() *added*
 ### continue working on:
 - example commands
 - drive command
+- comments for all functions with examples
