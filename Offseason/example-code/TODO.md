@@ -11,7 +11,7 @@
 ### command class:
 - getName() opcontrol [DONE]
 - getInterruptionBehavior() [DONE]
-- ignoringDisable() *added test first*
+- ignoringDisable() [DONE]
 - setComposed()/isComposed() AFTER andThen() is created
 - addRequirements() [DONE]
 - getRequiredSubsystems() [DONE]
@@ -32,17 +32,17 @@
 - getCurrentCommand() [DONE]
 - setScheduler() [DONE]
 - registerPendingSubsystems() [DONE]
-- FACTORY METHODS *added test second*
-    - runOnce() *added*
-    - run() *added*
-    - runUntil() *added*
-    - runFor() *added*
+- FACTORY METHODS [DONE]
+    - runOnce() [DONE]
+    - run() [DONE]
+    - runUntil() [DONE]
+    - runFor() [DONE]
 
 
 ### scheduler:
 - setDefaultCommand() [DONE]
 - cancel() [DONE]
-- cancelAll() *added test first*
+- cancelAll() [Done]
 - enable() [DONE]
 - disable() [DONE]
 - isEnabled() [DONE]

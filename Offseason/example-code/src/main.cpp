@@ -8,7 +8,7 @@ extern void robotCompInit();
 extern void robotAuto();
 extern void robotTeleop();
 
-void run_helper(bool robotState, void (*funcState)()) {
+void run_helper(bool robotState, void (*funcState)(), std::string name="") {
     std::string functionName = typeid(funcState).name();
     Scheduler::getInstance().setRobotEnabled(robotState);
     Scheduler::getInstance().cancelAll();
@@ -32,8 +32,13 @@ void run_helper(bool robotState, void (*funcState)()) {
 
         // testing \/ \/ \/
         char buffer[64];
-        snprintf(buffer, sizeof(buffer), "pre-scheduler [%s]: %lu", functionName.c_str(), static_cast<unsigned long>(deltaTime));
+        snprintf(buffer, sizeof(buffer), "[%s] delta time: %lu", !name.empty() ? name.c_str() : functionName.c_str(), static_cast<unsigned long>(deltaTime));
         pros::screen::print(pros::E_TEXT_MEDIUM, 9, buffer);
+        // Print command name and number of commands in scheduler
+        size_t commandCount = Scheduler::getInstance().size();
+        snprintf(buffer, sizeof(buffer), "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, buffer);
+
         // testing ^ ^ ^
     }
 }

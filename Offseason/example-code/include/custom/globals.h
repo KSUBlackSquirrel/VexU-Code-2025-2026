@@ -42,8 +42,10 @@ const static int kIMUid = 5;
 } // namespace drive vars
 
 namespace example {
-const static std::int8_t kMotorId = 20;
-const static pros::MotorGears kMotorColor = pros::MotorGearset::red;
+const static std::int8_t kMotor1Id = 18;
+const static std::int8_t kMotor2Id = 19;
+const static std::int8_t kMotor3Id = 20;
+const static pros::MotorGears kMotorColor = pros::MotorGearset::blue;
 } // namespace vars used for examples
 
 } // all global consts

@@ -22,14 +22,17 @@ std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.g
 // std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
 // std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
 // std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
-// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
-//     [](){ exampleSub->forward(); },     // initialize
-//     [](){ /* execute logic */ },        // execute  
-//     [](bool interrupted){ exampleSub->stop(); }, // end
-//     [](){ return false; },              // isFinished
-//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
-//     "Functional"                         // name
-// );
+std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+    [](){ exampleSub->forward(); },     // initialize
+    [](){ /* execute logic */ },        // execute  
+    [](bool interrupted){ 
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "interrupted type: %s", interrupted ? "true" : "false");
+        exampleSub->stop(); 
+    }, // end
+    [](){ return false; },              // isFinished
+    std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
+    "Functional"                         // name
+);
 // std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
 
 
@@ -51,12 +54,17 @@ void configureBindings() {
     
     // // FunctionalCommand - Custom command built with lambdas
     // controller.DOWN().onTrue(functionalCommand.get());
+
+    controller.UP().onTrue(run.get());
+    controller.RIGHT().onTrue(runOnce.get());
+    controller.LEFT().onTrue(runUntil.get());
+    controller.DOWN().onTrue(runFor.get());
 }
 
 
 
 void robotInit() {
-    // exampleSub->setDefaultCommand(holdCommand.get());
+    // exampleSub->setDefaultCommand(pulseCommand.get());
 }
 
 void robotDisabled() {
@@ -65,7 +73,10 @@ void robotDisabled() {
 
 void robotCompInit() {}
 
-void robotAuto() {}
+void robotAuto() {
+    // Scheduler::getInstance().schedule(functionalCommand.get());
+    // Scheduler::getInstance().schedule(run.get());
+}
 
 void robotTeleop() {
     // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));

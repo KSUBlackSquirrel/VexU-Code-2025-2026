@@ -6,44 +6,63 @@
 
 class ExampleSubsystem : public SubsystemBase {
     public:
-        inline ExampleSubsystem() : m_motor(globalConst::example::kMotorId, globalConst::example::kMotorColor) {
-            m_motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
-            m_motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+        inline ExampleSubsystem()
+            : m_motor1(globalConst::example::kMotor1Id, globalConst::example::kMotorColor),
+              m_motor2(globalConst::example::kMotor2Id, globalConst::example::kMotorColor),
+              m_motor3(globalConst::example::kMotor3Id, globalConst::example::kMotorColor)
+        {
+            m_motor3.set_reversed(true);
+            
+            m_motor1.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            m_motor2.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            m_motor3.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+
+            m_motor1.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+            m_motor2.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+            m_motor3.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
         }
 
         inline void forward() {
-            m_motor.move_velocity(globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
         }
 
         inline void backward() {
-            m_motor.move_velocity(-globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
         }
 
         inline void stop() {
-            m_motor.brake();
+            m_motor1.brake();
+            m_motor2.brake();
+            m_motor3.brake();
         }
 
         inline void setPosition(int val, int persent) {
-            m_motor.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
+            m_motor1.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
+            m_motor2.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
+            m_motor3.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
         }
 
         inline double getPosition() {
-            return m_motor.get_position();
+            return m_motor1.get_position();
         }
 
         inline void periodic() override {
             m_position = getPosition();
 
-            // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %f", m_position);
+            pros::screen::print(pros::E_TEXT_MEDIUM, 1, "Pulse Position: %d", m_position);
             
-            printf("%3d\n", m_position);
-
-            std::cout << m_position << '\n';
+            printf("%d\n", m_position);
         }
 
         
     private:
-        pros::Motor m_motor;
+        pros::Motor m_motor1;
+        pros::Motor m_motor2;
+        pros::Motor m_motor3;
         double m_position = 0;
 
 };
