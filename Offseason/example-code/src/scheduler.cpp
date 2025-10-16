@@ -241,7 +241,7 @@ void Scheduler::onCommandInterrupt(std::function<void(CommandBase*)> action) {
 void robotInit() {
     // Log when commands start
     Scheduler::getInstance().onCommandInitialize([](CommandBase* cmd) {
-        printf("[SCHEDULER] Command initialized: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command initialized: %s\n", cmd->getName().c_str());
     });
     
     // Log when commands are executing (called every 20ms while running)
@@ -252,12 +252,12 @@ void robotInit() {
     
     // Log when commands finish successfully
     Scheduler::getInstance().onCommandFinish([](CommandBase* cmd) {
-        printf("[SCHEDULER] Command finished: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command finished: %s\n", cmd->getName().c_str());
     });
     
     // Log when commands are interrupted/canceled
     Scheduler::getInstance().onCommandInterrupt([](CommandBase* cmd) {
-        printf("[SCHEDULER] Command interrupted: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command interrupted: %s\n", cmd->getName().c_str());
     });
     
     // Example: Update dashboard when commands change state
@@ -412,7 +412,7 @@ void Scheduler::run() {
     
     // Check for performance issues and warn if loop is slow
     if (m_watchdog.hasSlowEpochs()) {
-        printf("[SCHEDULER] WARNING: Slow loop detected!\n");
+        customPrint::printf("[SCHEDULER] WARNING: Slow loop detected!\n");
         m_watchdog.printEpochs();
     }
     

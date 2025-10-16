@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "pros/rtos.hpp"
+#include "custom/print.h"
 
 class Watchdog {
 public:
@@ -47,11 +48,11 @@ public:
     
     // Print performance summary (call when loop is slow)
     void printEpochs() {
-        printf("[WATCHDOG] Performance Summary:\n");
+        customPrint::printf("[WATCHDOG] Performance Summary:\n");
         for (const auto& epoch : m_epochs) {
-            printf("  %s: %dms\n", epoch.name.c_str(), epoch.duration);
+            customPrint::printf("  %s: %dms\n", epoch.name.c_str(), epoch.duration);
         }
-        printf("  Total Loop: %dms\n", getTotalTime());
+        customPrint::printf("  Total Loop: %dms\n", getTotalTime());
     }
     
     // Get total loop time

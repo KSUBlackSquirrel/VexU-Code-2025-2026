@@ -43,6 +43,7 @@
 #include "custom/controller.h"
 #include "custom/globals.h"
 #include "custom/watchdog.h"
+#include "custom/print.h"
 
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/command/commandBase.h"

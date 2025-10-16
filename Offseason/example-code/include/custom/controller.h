@@ -12,7 +12,7 @@ class JoystickBinder;
 
 class Controller : public pros::Controller {
 public:
-    Controller(pros::controller_id_e_t id, Scheduler* sch);
+    Controller(pros::controller_id_e_t id);
     ButtonBinder A();
     ButtonBinder B();
     ButtonBinder X();

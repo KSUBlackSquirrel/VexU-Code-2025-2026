@@ -8,37 +8,35 @@ extern void robotCompInit();
 extern void robotAuto();
 extern void robotTeleop();
 
+const static uint32_t kMinLoopMs = 20;
+
 void run_helper(bool robotState, void (*funcState)(), std::string name="") {
     std::string functionName = typeid(funcState).name();
     Scheduler::getInstance().setRobotEnabled(robotState);
     Scheduler::getInstance().cancelAll();
-    Watchdog watchdog;
 
     while (true) {
-        watchdog.reset();
+        // Mark the start of this iteration
         static uint32_t lastTick = pros::millis();
-        uint32_t currentTick = pros::millis();
-        uint32_t deltaTime = currentTick - lastTick;
-        lastTick = currentTick;
-        watchdog.addEpoch("start ["+functionName+"]");
-        
-        funcState();
+        uint32_t iterationStart = pros::millis();
+        lastTick = iterationStart;
 
-        watchdog.addEpoch("pre-scheduler ["+functionName+"]");
+        funcState();
         Scheduler::getInstance().run();
-        watchdog.addEpoch("post-scheduler ["+functionName+"]");
-        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
-        pros::delay(20);
+
+        // Enforce minimum loop time (20 ms). If work took less than 20ms,
+        // sleep the remainder. Otherwise continue immediately.
+        uint32_t elapsed = pros::millis() - iterationStart;
+        if (elapsed < kMinLoopMs) {
+            pros::delay(kMinLoopMs - elapsed);
+        }
 
         // testing \/ \/ \/
         char buffer[64];
-        snprintf(buffer, sizeof(buffer), "[%s] delta time: %lu", !name.empty() ? name.c_str() : functionName.c_str(), static_cast<unsigned long>(deltaTime));
-        pros::screen::print(pros::E_TEXT_MEDIUM, 9, buffer);
         // Print command name and number of commands in scheduler
         size_t commandCount = Scheduler::getInstance().size();
-        snprintf(buffer, sizeof(buffer), "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
-        pros::screen::print(pros::E_TEXT_MEDIUM, 8, buffer);
-
+        customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+        customPrint::screenPrint(8, "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
         // testing ^ ^ ^
     }
 }

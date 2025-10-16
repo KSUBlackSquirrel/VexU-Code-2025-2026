@@ -1,3 +1,5 @@
+Find a way to test robotDisabled()
+
 ## Note
 ### add into command:
 - Command Groups:

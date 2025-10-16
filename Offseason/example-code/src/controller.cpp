@@ -7,8 +7,8 @@ Scheduler* Controller::m_globalScheduler = nullptr;
 std::vector<Controller*> Controller::m_pendingControllers;
 
 // Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
-Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
-    : pros::Controller(id), m_scheduler(sch) {
+Controller::Controller(pros::controller_id_e_t id)
+    : pros::Controller(id) {
     if (m_scheduler) {
         m_scheduler->registerController(this);
     } else if (m_globalScheduler) {

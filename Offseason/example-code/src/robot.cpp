@@ -1,6 +1,6 @@
 #include "main.h"
 
-extern Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+extern Controller controller(globalConst::drive::kMainControllerID);
 
 // Add Subsystems Here
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
@@ -26,7 +26,7 @@ std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalComm
     [](){ exampleSub->forward(); },     // initialize
     [](){ /* execute logic */ },        // execute  
     [](bool interrupted){ 
-        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "interrupted type: %s", interrupted ? "true" : "false");
+        customPrint::screenPrint(8, "interrupted type: %s", interrupted ? "true" : "false");
         exampleSub->stop(); 
     }, // end
     [](){ return false; },              // isFinished
@@ -68,7 +68,7 @@ void robotInit() {
 }
 
 void robotDisabled() {
-    for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+    for(int i=1; i<=13; i++) customPrint::screenPrint(i, "--------DISABLED--------");
 }
 
 void robotCompInit() {}

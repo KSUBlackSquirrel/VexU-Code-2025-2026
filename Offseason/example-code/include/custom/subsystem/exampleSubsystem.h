@@ -23,15 +23,15 @@ class ExampleSubsystem : public SubsystemBase {
         }
 
         inline void forward() {
-            m_motor1.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
-            m_motor2.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
-            m_motor3.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
         }
 
         inline void backward() {
-            m_motor1.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
-            m_motor2.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
-            m_motor3.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
         }
 
         inline void stop() {
@@ -53,9 +53,8 @@ class ExampleSubsystem : public SubsystemBase {
         inline void periodic() override {
             m_position = getPosition();
 
-            pros::screen::print(pros::E_TEXT_MEDIUM, 1, "Pulse Position: %d", m_position);
-            
-            printf("%d\n", m_position);
+            customPrint::screenPrint(1, "Pulse Position: %0.2f", m_position);
+            customPrint::printf("%0.2f\n", m_position);
         }
 
         
@@ -64,6 +63,7 @@ class ExampleSubsystem : public SubsystemBase {
         pros::Motor m_motor2;
         pros::Motor m_motor3;
         double m_position = 0;
+        double m_percent = 100;
 
 };
 
