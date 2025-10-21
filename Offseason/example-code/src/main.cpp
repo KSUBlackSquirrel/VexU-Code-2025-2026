@@ -32,7 +32,6 @@ void run_helper(bool robotState, void (*funcState)(), std::string name="") {
         }
 
         // testing \/ \/ \/
-        char buffer[64];
         // Print command name and number of commands in scheduler
         size_t commandCount = Scheduler::getInstance().size();
         customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);

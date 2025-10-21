@@ -10,7 +10,7 @@ Find a way to test robotDisabled()
     - andThen(CommandBase* next);
 
 
-### verify all watchdog functions
+### verify all watchdog functions [add_a_wait_in_loop]
 addEpoch() *added*
 reset() *added*
 printEpochs() *added*
@@ -29,4 +29,16 @@ hasSlowEpochs() *added*
 ### continue working on:
 - example commands
 - drive command
-- comments for all functions with examples
+
+## LAST
+### add block comments for documentation
+controller.cpp/.h
+scheduler.cpp/.h
+subsystemBase.cpp/.h
+commandBase.h
+watchdog.h
+
+## AFTER LAST
+### custom documentation for examples
+exampleCommand.h
+exampleSubsystem.h
