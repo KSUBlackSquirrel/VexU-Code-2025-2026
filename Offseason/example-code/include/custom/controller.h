@@ -36,12 +36,13 @@ public:
 
     std::vector<ButtonBinder> m_buttonBinders;
     std::vector<JoystickBinder> m_joystickBinders;
-    Scheduler* m_scheduler;
 
-private:
     static Scheduler* m_globalScheduler;
     static std::vector<Controller*> m_pendingControllers;
+    
+private:
     static void registerPendingControllers();
+
 };
 
 enum class Edge { None, Rising, Falling, WhileTrue };

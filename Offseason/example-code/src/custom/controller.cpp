@@ -2,16 +2,14 @@
 #include "custom/scheduler.h"
 #include <vector>
 
-// Static members for backup registration
+// Static members for deferred registration
 Scheduler* Controller::m_globalScheduler = nullptr;
 std::vector<Controller*> Controller::m_pendingControllers;
 
 // Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
 Controller::Controller(pros::controller_id_e_t id)
     : pros::Controller(id) {
-    if (m_scheduler) {
-        m_scheduler->registerController(this);
-    } else if (m_globalScheduler) {
+    if (m_globalScheduler != nullptr) {
         m_globalScheduler->registerController(this);
     } else {
         m_pendingControllers.push_back(this);
@@ -89,18 +87,18 @@ ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
 void ButtonBinder::poll() {
     if (m_edge == Edge::Rising) {
         bool curr = m_controller->get_digital_new_press(m_button);
-        if (curr) m_controller->m_scheduler->schedule(km_command);
+        if (curr && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
     }
     if (m_edge == Edge::Falling) {
         bool curr = m_controller->get_digital_new_release(m_button);
-        if (curr) m_controller->m_scheduler->schedule(km_command);
+        if (curr && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
     }
     if (m_edge == Edge::WhileTrue) {
         bool curr = m_controller->get_digital(m_button);
-        if (curr && !m_runningCommand) {
-            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
-        } else if (!curr && m_runningCommand) {
-            m_controller->m_scheduler->cancel(m_runningCommand);
+        if (curr && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
+        } else if (!curr && m_runningCommand && Controller::m_globalScheduler) {
+            Controller::m_globalScheduler->cancel(m_runningCommand);
             m_runningCommand = nullptr;
         }
     }
@@ -134,13 +132,13 @@ JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
 void JoystickBinder::poll() {
     int curr = m_controller->get_analog(m_stick);
     bool above = (m_threshold >= 0) ? (curr >= m_threshold) : (curr <= m_threshold);
-    if (m_edge == Edge::Rising && above && !m_prev) m_controller->m_scheduler->schedule(km_command);
-    if (m_edge == Edge::Falling && !above && m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (m_edge == Edge::Rising && above && !m_prev && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
+    if (m_edge == Edge::Falling && !above && m_prev && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
     if (m_edge == Edge::WhileTrue) {
-        if (above && !m_runningCommand) {
-            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
-        } else if (!above && m_runningCommand) {
-            m_controller->m_scheduler->cancel(m_runningCommand);
+        if (above && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
+        } else if (!above && m_runningCommand && Controller::m_globalScheduler) {
+            Controller::m_globalScheduler->cancel(m_runningCommand);
             m_runningCommand = nullptr;
         }
     }

@@ -1,6 +1,6 @@
 #include "main.h"
 
-extern Controller controller(globalConst::drive::kMainControllerID);
+Controller controller(globalConst::drive::kMainControllerID);
 
 // Add Subsystems Here
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
