@@ -54,7 +54,12 @@
 #include "custom/command/driveCommand.h"
 #include "custom/subsystem/driveSubsystem.h"
 
+<<<<<<< HEAD
 #include "custom/command/testCommand.h"
+=======
+#include "custom/command/exampleCommand.h"
+#include "custom/command/exampleDefaultCommand.h"
+>>>>>>> parent of 2f88dbe (hi im philip and this is my super cool stuff ive been working on for the past 7 years)
 #include "custom/subsystem/exampleSubsystem.h"
 
 
