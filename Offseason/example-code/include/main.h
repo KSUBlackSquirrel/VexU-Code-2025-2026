@@ -54,8 +54,8 @@
 #include "custom/command/driveCommand.h"
 #include "custom/subsystem/driveSubsystem.h"
 
-#include "custom/command/exampleCommand.h"
-#include "custom/command/exampleDefaultCommand.h"
+#include "custom/command/testCommand.h"
+
 #include "custom/subsystem/exampleSubsystem.h"
 
 
