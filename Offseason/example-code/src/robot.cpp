@@ -11,12 +11,12 @@ std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forwa
 std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
 std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
 
-std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
 
 // Default commands
 // std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
 
-// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
 
 // Example command variations
 // std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
@@ -44,7 +44,7 @@ void configureBindings() {
     // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
 
     // // Original Pulse command
-    // controller.X().onTrue(pulseCommand.get());
+    controller.X().onTrue(pulseCommand.get());
     
     // // TimeoutCommand - Pulse that automatically stops after 3 seconds
     // controller.A().onTrue(timeoutCommand.get());
