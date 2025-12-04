@@ -1,0 +1,512 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+12 files changed
+
+    1 contributor
+
+Commits on Sep 30, 2025
+
+    refactored controller binding 
+
+@IanRohrbacher
+IanRohrbacher committed on Sep 30
+
+Showing
+with 718 additions and 741 deletions.
+2 changes: 1 addition & 1 deletion 2
+Offseason/example-code/Makefile
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -17,7 +17,7 @@ EXTRA_CFLAGS=
+EXTRA_CXXFLAGS=
+EXTRA_CXXFLAGS=
+
+
+# Set to 1 to enable hot/cold linking
+# Set to 1 to enable hot/cold linking
+USE_PACKAGE:=0
+USE_PACKAGE:=1
+
+
+# Add libraries you do not wish to include in the cold image here
+# Add libraries you do not wish to include in the cold image here
+# EXCLUDE_COLD_LIBRARIES:= $(FWDIR)/your_library.a
+# EXCLUDE_COLD_LIBRARIES:= $(FWDIR)/your_library.a
+6 changes: 0 additions & 6 deletions 6
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,9 +1,3 @@
+test everything;
+sub periodic
+controller binding
+command
+InstantCommand
+
+change how the main loop waits
+change how the main loop waits
+
+
+work on default command function
+work on default command function
+4 changes: 3 additions & 1 deletion 4
+Offseason/example-code/include/custom/command/exampleCommand.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -17,8 +17,10 @@ class Pulse : public CommandBase {
+
+
+        if (exampleSubsystem->getPosition() >= pulseLen) {
+        if (exampleSubsystem->getPosition() >= pulseLen) {
+            exampleSubsystem->backward();
+            exampleSubsystem->backward();
+            count++;
+        } else if (exampleSubsystem->getPosition() <= -pulseLen) {
+        } else if (exampleSubsystem->getPosition() <= -pulseLen) {
+            exampleSubsystem->forward();
+            exampleSubsystem->forward();
+            count++;
+        }
+        }
+    }
+    }
+
+
+@@ -41,7 +43,7 @@ class Pulse : public CommandBase {
+
+
+private:
+private:
+    ExampleSubsystem* exampleSubsystem;
+    ExampleSubsystem* exampleSubsystem;
+    uint16_t pulseLen = 1500.0;
+    double pulseLen = 300.0;
+    uint8_t count;
+    uint8_t count;
+};
+};
+
+
+36 changes: 26 additions & 10 deletions 36
+Offseason/example-code/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -13,8 +13,24 @@ class JoystickBinder;
+class Controller : public pros::Controller {
+class Controller : public pros::Controller {
+public:
+public:
+    Controller(pros::controller_id_e_t id, Scheduler* sch);
+    Controller(pros::controller_id_e_t id, Scheduler* sch);
+    ButtonBinder setButtonCommand();
+    ButtonBinder A();
+    JoystickBinder setJoystickCommand();
+    ButtonBinder B();
+    ButtonBinder X();
+    ButtonBinder Y();
+    ButtonBinder Right();
+    ButtonBinder Down();
+    ButtonBinder Up();
+    ButtonBinder Left();
+    ButtonBinder L1();
+    ButtonBinder L2();
+    ButtonBinder R1();
+    ButtonBinder R2();
+
+    JoystickBinder LeftJoyY(int threshold);
+    JoystickBinder LeftJoyX(int threshold);
+    JoystickBinder RightJoyY(int threshold);
+    JoystickBinder RightJoyX(int threshold);
+
+    void poll();
+    void poll();
+
+
+    std::array<bool, 12> prevButtonStates;
+    std::array<bool, 12> prevButtonStates;
+@@ -27,10 +43,10 @@ enum class Edge { None, Rising, Falling, WhileTrue };
+
+
+class ButtonBinder {
+class ButtonBinder {
+public:
+public:
+    ButtonBinder(Controller* ctrl);
+    ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn);
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
+    ButtonBinder& onTrue(const CommandBase* cmd);
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd);
+    ButtonBinder& onFalse(const CommandBase* cmd);
+    ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
+    ButtonBinder& whileTrue(const CommandBase* cmd);
+    void poll();
+    void poll();
+
+
+private:
+private:
+@@ -44,10 +60,10 @@ class ButtonBinder {
+
+
+class JoystickBinder {
+class JoystickBinder {
+public:
+public:
+    JoystickBinder(Controller* ctrl);
+    JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold);
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    JoystickBinder& onTrue(const CommandBase* cmd);
+    JoystickBinder& onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    JoystickBinder& onFalse(const CommandBase* cmd);
+    JoystickBinder& whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    JoystickBinder& whileTrue(const CommandBase* cmd);
+    void poll();
+    void poll();
+
+
+private:
+private:
+2 changes: 0 additions & 2 deletions 2
+Offseason/example-code/include/custom/globals.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -53,8 +53,6 @@ const static pros::MotorGears motorColor = pros::MotorGearset::red;
+namespace globalVar {
+namespace globalVar {
+
+
+namespace pulse {
+namespace pulse {
+static int count = 0;
+static double position = 0.0;
+
+
+} // namespace pulse
+} // namespace pulse
+
+
+13 changes: 10 additions & 3 deletions 13
+Offseason/example-code/include/custom/subsystem/exampleSubsystem.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -7,7 +7,8 @@
+class ExampleSubsystem : public SubsystemBase {
+class ExampleSubsystem : public SubsystemBase {
+    public:
+    public:
+        inline ExampleSubsystem() : motor(globalConst::example::motorId, globalConst::example::motorColor) {
+        inline ExampleSubsystem() : motor(globalConst::example::motorId, globalConst::example::motorColor) {
+            motor.set_brake_mode(pros::E_MOTOR_BRAKE_BRAKE);
+            motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+        }
+        }
+
+
+        inline void forward() {
+        inline void forward() {
+@@ -27,10 +28,16 @@ class ExampleSubsystem : public SubsystemBase {
+        }
+        }
+
+
+        inline void periodic() override {
+        inline void periodic() override {
+            globalVar::pulse::count += 1;
+            position = getPosition();
+            globalVar::pulse::position = motor.get_position();
+            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count);
+
+            std::cout << '\r' << count << '\n';
+            std::cout << '\r' << position << '\n';
+        }
+        }
+
+
+        int count = 0;
+        double position = 0;
+
+    private:
+    private:
+        pros::Motor motor;
+        pros::Motor motor;
+
+
+1,274 changes: 638 additions & 636 deletions 1,274
+Offseason/example-code/project.pros
+
+Large diffs are not rendered by default.
+68 changes: 30 additions & 38 deletions 68
+Offseason/example-code/src/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,6 +1,3 @@
+// Controller.cpp
+// Implements the Controller class and its binder helpers for button/joystick command scheduling.
+// This file handles polling controller inputs and scheduling commands via the Scheduler.
+#include "main.h"
+#include "main.h"
+
+
+
+
+@@ -10,16 +7,26 @@ Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+    prevButtonStates.fill(false);
+    prevButtonStates.fill(false);
+}
+}
+
+
+// Create a new ButtonBinder for every available button on this controller
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+ButtonBinder Controller::B() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_B); }
+ButtonBinder Controller::X() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_X); }
+ButtonBinder Controller::Y() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_Y); }
+ButtonBinder Controller::Right() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
+ButtonBinder Controller::Down() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
+ButtonBinder Controller::Up() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
+ButtonBinder Controller::Left() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
+ButtonBinder Controller::L1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L1); }
+ButtonBinder Controller::L2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L2); }
+ButtonBinder Controller::R1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R1); }
+ButtonBinder Controller::R2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R2); }
+
+// Create a new JoystickBinder for each joystick on this controller
+JoystickBinder Controller::LeftJoyY(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_LEFT_Y, threshold); }
+JoystickBinder Controller::LeftJoyX(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_LEFT_X, threshold); }
+JoystickBinder Controller::RightJoyY(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_RIGHT_Y, threshold); }
+JoystickBinder Controller::RightJoyX(int threshold) { return JoystickBinder(this, pros::E_CONTROLLER_ANALOG_RIGHT_X, threshold); }
+
+
+// Create a new ButtonBinder for this controller
+ButtonBinder Controller::setButtonCommand() {
+    return ButtonBinder(this);
+}
+
+// Create a new JoystickBinder for this controller
+JoystickBinder Controller::setJoystickCommand() {
+    return JoystickBinder(this);
+}
+
+
+// Poll all binders to check for input events and schedule/cancel commands
+// Poll all binders to check for input events and schedule/cancel commands
+void Controller::poll() {
+void Controller::poll() {
+@@ -28,30 +35,23 @@ void Controller::poll() {
+}
+}
+
+
+// ButtonBinder constructor: binds to a controller
+// ButtonBinder constructor: binds to a controller
+ButtonBinder::ButtonBinder(Controller* ctrl)
+ButtonBinder::ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn)
+    : controller(ctrl), edge(Edge::None), runningCommand(nullptr) {}
+    : controller(ctrl), button(btn), command(nullptr), edge(Edge::None), runningCommand(nullptr) {}
+
+
+// Bind a command to a button press (rising edge)
+// Bind a command to button movement (rising edge, falling edge, or while held)
+ButtonBinder& ButtonBinder::onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+ButtonBinder& ButtonBinder::onTrue(const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    command = cmd;
+    edge = Edge::Rising;
+    edge = Edge::Rising;
+    controller->buttonBinders.emplace_back(*this);
+    controller->buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+    return controller->buttonBinders.back();
+}
+}
+
+ButtonBinder& ButtonBinder::onFalse(const CommandBase* cmd) {
+// Bind a command to a button release (falling edge)
+ButtonBinder& ButtonBinder::onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    command = cmd;
+    edge = Edge::Falling;
+    edge = Edge::Falling;
+    controller->buttonBinders.emplace_back(*this);
+    controller->buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+    return controller->buttonBinders.back();
+}
+}
+
+ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
+// Bind a command to while a button is held
+ButtonBinder& ButtonBinder::whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    command = cmd;
+    edge = Edge::WhileTrue;
+    edge = Edge::WhileTrue;
+    controller->buttonBinders.emplace_back(*this);
+    controller->buttonBinders.emplace_back(*this);
+@@ -80,31 +80,23 @@ void ButtonBinder::poll() {
+}
+}
+
+
+// JoystickBinder constructor: binds to a controller
+// JoystickBinder constructor: binds to a controller
+JoystickBinder::JoystickBinder(Controller* ctrl)
+JoystickBinder::JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold)
+    : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+    : controller(ctrl), stick(stick), threshold(threshold), command(nullptr), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+
+
+// Bind a command to joystick movement (rising edge, falling edge, or while held)
+// Bind a command to joystick movement (rising edge, falling edge, or while held)
+JoystickBinder& JoystickBinder::onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::onTrue(const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    this->command = cmd;
+    edge = Edge::Rising;
+    edge = Edge::Rising;
+    controller->joystickBinders.emplace_back(*this);
+    controller->joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+    return controller->joystickBinders.back();
+}
+}
+
+JoystickBinder& JoystickBinder::onFalse(const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    this->command = cmd;
+    edge = Edge::Falling;
+    edge = Edge::Falling;
+    controller->joystickBinders.emplace_back(*this);
+    controller->joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+    return controller->joystickBinders.back();
+}
+}
+
+JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    this->command = cmd;
+    edge = Edge::WhileTrue;
+    edge = Edge::WhileTrue;
+    controller->joystickBinders.emplace_back(*this);
+    controller->joystickBinders.emplace_back(*this);
+17 changes: 10 additions & 7 deletions 17
+Offseason/example-code/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -10,11 +10,11 @@ ExampleSubsystem* exampleSub = new ExampleSubsystem();
+
+
+// Add Any Button Bindings Here
+// Add Any Button Bindings Here
+void configureBindings() {
+void configureBindings() {
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { 
+    controller.LeftJoyY(-20).onFalse(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 8, "Stick<-20"); }));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS");
+    controller.Y().onTrue(new InstantCommand([] { exampleSub->forward(); }));
+     }));
+    controller.Y().onFalse(new InstantCommand([] { exampleSub->stop(); }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
+    controller.A().onTrue(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS"); }));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_X, new Pulse(exampleSub));
+    controller.X().onTrue(new Pulse(exampleSub));
+}
+}
+
+
+
+
+@@ -85,12 +85,15 @@ void autonomous() {}
+ */
+ */
+void opcontrol() {
+void opcontrol() {
+    while (true) {
+    while (true) {
+        static int lastTick = pros::millis();
+        double robotTickSpeed = pros::millis() - lastTick;
+
+        pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(scheduler.size()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(scheduler.size()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Default Size: %3d", static_cast<int>(scheduler.defaultSize()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Default Size: %3d", static_cast<int>(scheduler.defaultSize()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", globalVar::pulse::count);
+        pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %3d", globalVar::pulse::position);
+        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "robot tick: %3d", robotTickSpeed);
+
+
+
+
+        // DO NOT Modify the code below
+        // DO NOT Modify the code below
+3 changes: 0 additions & 3 deletions 3
+Offseason/example-code/src/scheduler.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,6 +1,3 @@
+// Scheduler.cpp
+// Implements the Scheduler class for command scheduling, execution, and subsystem updates.
+// Handles the main command queue, periodic subsystem management, and default commands.
+#include "main.h"
+#include "main.h"
+
+
+// Scheduler constructor: initializes the scheduler
+// Scheduler constructor: initializes the scheduler
+2 changes: 0 additions & 2 deletions 2
+Offseason/example-code/src/subsystemBase.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,5 +1,3 @@
+// SubsystemBase.cpp
+// Implementation of SubsystemBase class with direct scheduler registration
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/scheduler.h"
+#include "custom/scheduler.h"
+
+
+32 changes: 0 additions & 32 deletions 32
+Offseason/example-code/static/example.txt
+
+This file was deleted.
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

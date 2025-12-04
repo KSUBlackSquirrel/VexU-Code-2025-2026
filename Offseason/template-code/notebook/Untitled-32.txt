@@ -1,0 +1,112 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+5 files changed
+
+    1 contributor
+
+Commits on Oct 21, 2025
+
+    Move core source files to custom directory 
+
+@IanRohrbacher
+IanRohrbacher committed last month
+
+Showing
+with 14 additions and 3 deletions.
+16 changes: 14 additions & 2 deletions 16
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -10,7 +10,7 @@ Find a way to test robotDisabled()
+    - andThen(CommandBase* next);
+    - andThen(CommandBase* next);
+
+
+
+
+### verify all watchdog functions
+### verify all watchdog functions [add_a_wait_in_loop]
+addEpoch() *added*
+addEpoch() *added*
+reset() *added*
+reset() *added*
+printEpochs() *added*
+printEpochs() *added*
+@@ -29,4 +29,16 @@ hasSlowEpochs() *added*
+### continue working on:
+### continue working on:
+- example commands
+- example commands
+- drive command
+- drive command
+- comments for all functions with examples
+
+## LAST
+### add block comments for documentation
+controller.cpp/.h
+scheduler.cpp/.h
+subsystemBase.cpp/.h
+commandBase.h
+watchdog.h
+
+## AFTER LAST
+### custom documentation for examples
+exampleCommand.h
+exampleSubsystem.h
+0
+Offseason/example-code/src/controller.cpp → ...on/example-code/src/custom/controller.cpp
+File renamed without changes.
+0
+Offseason/example-code/src/scheduler.cpp → ...son/example-code/src/custom/scheduler.cpp
+File renamed without changes.
+0
+Offseason/example-code/src/subsystemBase.cpp → ...example-code/src/custom/subsystemBase.cpp
+File renamed without changes.
+1 change: 0 additions & 1 deletion 1
+Offseason/example-code/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -32,7 +32,6 @@ void run_helper(bool robotState, void (*funcState)(), std::string name="") {
+        }
+        }
+
+
+        // testing \/ \/ \/
+        // testing \/ \/ \/
+        char buffer[64];
+        // Print command name and number of commands in scheduler
+        // Print command name and number of commands in scheduler
+        size_t commandCount = Scheduler::getInstance().size();
+        size_t commandCount = Scheduler::getInstance().size();
+        customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+        customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

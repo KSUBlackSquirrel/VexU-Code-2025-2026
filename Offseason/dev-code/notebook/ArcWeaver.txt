@@ -1,0 +1,101 @@
+ArcWeaver
+OP
+ — 7/15/2025 10:17 PM
+I am trying to debug a issue where when I run 'controller->print(0, 0, "Seconds: %d", count); controller->print(1, 0, "Pulse: %d", countPulse);' in a function but only the first one prints. I am trying to use printf and the 'pros terminal' command to see the outputs, however I don't see anything. I am using VScode, LemLib 0.5.6, kernel 4.2.1, and liblvgl  9.2.0.
+
+For reference there is the function in question.
+
+printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+int result1 = controller->print(0, 0, "Seconds: %d", count);
+int result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+printf("Print results: line0=%d, line1=%d\n", result1, result2);
+ 
+andrew | 781x — 7/18/2025 7:20 PM
+did you try running pros t in the pros integrated terminal while keeping the controller to your computer?
+regarding controller prints not working:
+the controller is a bit of silly guy.
+essentially a message is only sent to the controller every 50ms or so.
+these messages can either be vibrations or display commands.
+If you try to send a message when you already have one queued, that new message will be discarded, in favor of the queued message.
+does that make sense?
+ArcWeaver
+OP
+ — 7/18/2025 8:42 PM
+nope i was running pros terminal. pros t did work so thanks. and about the controller, yah i assumed there was a buffer not allowing it to run right. and looking at the debugging prints it Print results: line0=1, line1=2147483647 so yah it fails. is there a way to print to multiple lines with one print statement? 
+andrew | 781x — 7/18/2025 8:43 PM
+not that im aware of
+at one time i tried to make smth to handle prints nicely and do a queue sort of thing, but i never got it to work
+running pros terminal in the integrated terminal should have worked tho
+ArcWeaver
+OP
+ — 7/18/2025 8:46 PM
+yah idk pros terminal didnt work when i tried. i just tried again and it worked.
+ArcWeaver
+OP
+ — 7/18/2025 9:05 PM
+printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+int result1 = controller->print(0, 0, "Seconds: %d", count);
+pros::delay(50); // added for print buffer
+int result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+printf("Print results: line0=%d, line1=%d\n", result1, result2);
+
+Debug: count=0, countPulse=0
+Print results: line0=2147483647, line1=1
+Debug: count=1, countPulse=0
+Print results: line0=1, line1=1
+Debug: count=2, countPulse=7
+Print results: line0=1, line1=1
+Debug: count=3, countPulse=7
+Print results: line0=1, line1=1
+Debug: count=4, countPulse=7
+Print results: line0=1, line1=1
+Debug: count=4, countPulse=8
+Print results: line0=2147483647, line1=1
+Debug: count=5, countPulse=8
+Print results: line0=2147483647, line1=1
+Debug: count=6, countPulse=8
+Print results: line0=1, line1=1
+Debug: count=7, countPulse=8
+Print results: line0=1, line1=1
+Debug: count=7, countPulse=9
+Print results: line0=1, line1=1
+Debug: count=8, countPulse=9
+Print results: line0=2147483647, line1=1
+Debug: count=9, countPulse=9
+Print results: line0=1, line1=1
+Debug: count=10, countPulse=9
+Print results: line0=1, line1=1
+Debug: count=10, countPulse=10
+Print results: line0=1, line1=1
+Debug: count=11, countPulse=10
+Print results: line0=2147483647, line1=1
+Debug: count=17, countPulse=11
+Print results: line0=1, line1=1
+Debug: count=17, countPulse=12
+Print results: line0=2147483647, line1=1
+
+it fails as if when both values update, even with the delay. whats a safe delay i should use?
+andrew | 781x — 7/18/2025 9:16 PM
+you dont see it on the controller or you do?
+as for a safe delay, idk, increase it until it works reliably enough
+or try to look it up on the vex forum
+ArcWeaver
+OP
+ — 7/18/2025 9:19 PM
+yah it didnt show on the controller. and increasing the delay actually didnt work. idk why but when i ran this as a infinite loop only the second print worked.
+andrew | 781x — 7/18/2025 9:20 PM
+did you have a delay after the second print?
+ArcWeaver
+OP
+ — 7/18/2025 9:22 PM
+it was this same code with any delay 50-200 that i tested
+printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+int result1 = controller->print(0, 0, "Seconds: %d", count);
+pros::delay(50-200); // added for print buffer
+int result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+printf("Print results: line0=%d, line1=%d\n", result1, result2);
+oh i see what you are saying
+ArcWeaver
+OP
+ — 7/18/2025 9:44 PM
+thanks for the help, its all working ❤️

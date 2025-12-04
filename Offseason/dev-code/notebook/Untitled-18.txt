@@ -1,0 +1,199 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Sep 17
+this works so far...
+main
+
+1 parent 
+33776e6
+ commit ef753a2
+
+File tree
+
+Offseason/drive-test
+
+include
+
+custom
+
+command
+
+    driveCommand.h
+
+subsystem
+
+        driveSubsystem.h
+
+    main.h
+
+src
+
+            main.cpp
+
+4 files changed
++16
+-10
+lines changed
+ 
+‎Offseason/drive-test/static/driveCommand.txt‎
+renamed to ‎Offseason/drive-test/include/custom/command/driveCommand.h‎
++6-3Lines changed: 6 additions & 3 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -3,19 +3,21 @@
+
+
+#include "commandBase.h"
+#include "commandBase.h"
+#include "custom/subsystem/driveSubsystem.h"
+#include "custom/subsystem/driveSubsystem.h"
+#include "custom/controller.h"
+#include "custom/globals.h"
+#include "custom/globals.h"
+
+
+class SubsystemBase;
+class SubsystemBase;
+
+
+class DriveCommand: public CommandBase {
+class DriveCommand: public CommandBase {
+public:
+public:
+    DriveCommand(DriveSubsystem* sub) { 
+    DriveCommand(DriveSubsystem* sub, Controller* ctrl) { 
+        subsystem = sub; 
+        subsystem = sub;
+        controller = ctrl;
+        addRequirements(subsystem);
+        addRequirements(subsystem);
+    }
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        subsystem->tankDrive(globalDrive::mainControllerID, false);
+        subsystem->tankDrive(controller, false);
+    }
+    }
+
+
+    inline void end() override {}
+    inline void end() override {}
+@@ -30,6 +32,7 @@ class DriveCommand: public CommandBase {
+
+
+private:
+private:
+    DriveSubsystem* subsystem;
+    DriveSubsystem* subsystem;
+    Controller* controller;
+};
+};
+
+
+#endif
+#endif
+‎Offseason/drive-test/static/driveSubsystem.txt‎
+renamed to ‎Offseason/drive-test/include/custom/subsystem/driveSubsystem.h‎
++5-4Lines changed: 5 additions & 4 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -1,7 +1,8 @@
+#ifndef DRIVERSUBSYSTEM_H_
+#ifndef DRIVESUBSYSTEM_H_
+#define DRIVESUBSYSTEM_H_
+#define DRIVESUBSYSTEM_H_
+
+
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/controller.h"
+#include "lemlib/api.hpp"
+#include "lemlib/api.hpp"
+
+
+
+
+@@ -25,10 +26,10 @@ class DriveSubsystem : public SubsystemBase {
+            return chassis.getPose();
+            return chassis.getPose();
+        }
+        }
+
+
+        inline void tankDrive(pros::Controller& controller, bool inverted){
+        inline void tankDrive(Controller* controller, bool inverted){
+            chassis.tank(
+            chassis.tank(
+                inverted ? -controller.get_analog(globalDrive::rightStickY) : controller.get_analog(globalDrive::leftStickY),
+                inverted ? -controller->get_analog(globalDrive::rightStickY) : controller->get_analog(globalDrive::leftStickY),
+                inverted ?  -controller.get_analog(globalDrive::leftStickY) : controller.get_analog(globalDrive::rightStickY));
+                inverted ?  -controller->get_analog(globalDrive::leftStickY) : controller->get_analog(globalDrive::rightStickY));
+        }
+        }
+
+
+    private:
+    private:
+‎Offseason/drive-test/include/main.h‎
++2-2Lines changed: 2 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -51,8 +51,8 @@
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/instantCommand.h"
+#include "custom/command/instantCommand.h"
+
+
+// #include "custom/command/driveCommand.h"
+#include "custom/command/driveCommand.h"
+// #include "custom/subsystem/driveSubsystem.h"
+#include "custom/subsystem/driveSubsystem.h"
+
+
+
+
+
+
+‎Offseason/drive-test/src/main.cpp‎
++3-1Lines changed: 3 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -8,7 +8,9 @@ Controller controller(globalDrive::mainControllerID, &scheduler);
+
+
+// Add Any Button Bindings Here
+// Add Any Button Bindings Here
+void configureBindings() {
+void configureBindings() {
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { int num=0; }));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { 
+        pros::screen::print(pros::E_TEXT_MEDIUM, 5, "PRESS");
+     }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
+}
+}
+
+
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.

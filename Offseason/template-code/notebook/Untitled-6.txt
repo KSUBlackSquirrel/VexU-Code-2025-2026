@@ -1,0 +1,542 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2024-2025
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Jul 18
+whileTrue without bugs
+main
+
+1 parent 
+9653562
+ commit e963fc5
+
+File tree
+
+Test2025/command_test
+
+include
+
+custom
+
+command
+
+down.h
+moveWithoutLimit.h
+pulse.h
+
+    up.h
+
+controller.h
+subsystem
+
+        controllerScreenSubsystem.h
+
+    main.h
+
+src
+
+            main.cpp
+
+8 files changed
++157
+-22
+lines changed
+ 
+‎Test2025/command_test/include/custom/command/down.h‎
++1Lines changed: 1 addition & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -20,6 +20,7 @@ class Down : public CommandBase {
+    }
+    }
+
+
+    inline void interrupted() override {
+    inline void interrupted() override {
+        printf("down stopped\n");
+        subsystem->stop();
+        subsystem->stop();
+    }
+    }
+
+
+‎Test2025/command_test/include/custom/command/moveWithoutLimit.h‎
++44Lines changed: 44 additions & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -0,0 +1,44 @@
+#ifndef MOVEWITHOUTLIMIT_H_
+#define MOVEWITHOUTLIMIT_H_
+#include "commandBase.h"
+#include "custom/subsystem/motorSubsystem.h"
+class MoveWithoutLimit : public CommandBase {
+public:
+    MoveWithoutLimit(MotorSubsystem* sub, bool fwd) : dir(fwd) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+    inline void execute() override {
+        if(dir) {
+            subsystem->forward();
+        } else {
+            subsystem->backward();
+        }
+    }
+    inline void end() override {
+        subsystem->stop();
+    }
+    inline void interrupted() override {
+        printf("MoveWithoutLimit stopped\n");
+        subsystem->stop();
+    }
+    inline bool isFinished() override {
+        return false;
+    }
+    inline CommandBase* clone() const override {
+        return new MoveWithoutLimit(*this);
+    }
+private:
+    MotorSubsystem* subsystem;
+    bool dir;
+};
+#endif
+‎Test2025/command_test/include/custom/command/pulse.h‎
++2-1Lines changed: 2 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -14,7 +14,7 @@ class Pulse : public CommandBase {
+        addUsedSubsystem(controllerSubsystem);     // Screen just needs periodic updates
+        addUsedSubsystem(controllerSubsystem);     // Screen just needs periodic updates
+
+
+        toggle = false;
+        toggle = false;
+        lastToggleTime = 0;
+        lastToggleTime = 15;
+    }
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+@@ -47,6 +47,7 @@ class Pulse : public CommandBase {
+    }
+    }
+
+
+    inline void interrupted() override {
+    inline void interrupted() override {
+        printf("pulse stopped\n");
+        motorSubsystem->stop();
+        motorSubsystem->stop();
+    }
+    }
+
+
+‎Test2025/command_test/include/custom/command/up.h‎
++1Lines changed: 1 addition & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -20,6 +20,7 @@ class Up : public CommandBase {
+    }
+    }
+
+
+    inline void interrupted() override {
+    inline void interrupted() override {
+        printf("up stopped\n");
+        subsystem->stop();
+        subsystem->stop();
+    }
+    }
+
+
+‎Test2025/command_test/include/custom/controller.h‎
++87-11Lines changed: 87 additions & 11 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,8 +6,6 @@
+#include <typeinfo>
+#include <typeinfo>
+#include <vector>
+#include <vector>
+
+
+namespace scheduler {
+class ButtonBinder;
+class ButtonBinder;
+class JoystickBinder;
+class JoystickBinder;
+
+
+@@ -18,7 +16,7 @@ class Controller : public pros::Controller {
+        prevButtonStates.fill(false);
+        prevButtonStates.fill(false);
+    }
+    }
+
+
+    inline void addCommand(const CommandBase* cmd) { 
+    inline CommandBase* addCommand(const CommandBase* cmd) { 
+        // Check for conflicts with existing commands
+        // Check for conflicts with existing commands
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        if (!requiredSubsystems.empty()) {
+        if (!requiredSubsystems.empty()) {
+@@ -48,8 +46,24 @@ class Controller : public pros::Controller {
+            }
+            }
+        }
+        }
+
+
+        // Add the new command
+        // Add the new command and return pointer to the running instance
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone()));
+        auto clonedCmd = std::unique_ptr<CommandBase>(cmd->clone());
+        CommandBase* runningInstance = clonedCmd.get();
+        scheduler->push_back(std::move(clonedCmd));
+        return runningInstance;
+    }
+    void cancelCommand(CommandBase* commandInstance) {
+        if (!commandInstance) return;
+        
+        // Find and cancel the specific command instance
+        for (auto it = scheduler->begin(); it != scheduler->end(); ++it) {
+            if (it->get() == commandInstance) {
+                (*it)->end();  // Call end() for normal whileTrue termination
+                scheduler->erase(it);
+                break;
+            }
+        }
+    }
+    }
+
+
+    // Register a subsystem for periodic updates
+    // Register a subsystem for periodic updates
+@@ -89,8 +103,8 @@ class Controller : public pros::Controller {
+
+
+class ButtonBinder {
+class ButtonBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling };
+    enum class Edge { None, Rising, Falling, WhileTrue };
+    ButtonBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None) {}
+    ButtonBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), runningCommand(nullptr) {}
+
+
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        button = btn;
+@@ -130,23 +144,55 @@ class ButtonBinder {
+        controller->buttonBinders.emplace_back(*this);
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+        return controller->buttonBinders.back();
+    }
+    }
+    
+    ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        command = cmd;
+        edge = Edge::WhileTrue;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+
+
+    void poll() {
+    void poll() {
+        if (edge == Edge::Rising)  { bool curr = controller->get_digital_new_press(button);    if (curr) controller->addCommand(command); }
+        if (edge == Edge::Rising)  { bool curr = controller->get_digital_new_press(button);    if (curr) controller->addCommand(command); }
+        if (edge == Edge::Falling) { bool curr = controller->get_digital_new_release(button);  if (curr) controller->addCommand(command); }
+        if (edge == Edge::Falling) { bool curr = controller->get_digital_new_release(button);  if (curr) controller->addCommand(command); }
+        if (edge == Edge::WhileTrue) { 
+            bool curr = controller->get_digital(button); 
+            if (curr && !runningCommand) {
+                // Button pressed - start the command and store reference
+                runningCommand = controller->addCommand(command);
+            } else if (!curr && runningCommand) {
+                // Button released - cancel the specific command instance
+                controller->cancelCommand(runningCommand);
+                runningCommand = nullptr;
+            }
+        }
+    }
+    }
+
+
+private:
+private:
+    Controller* controller;
+    Controller* controller;
+    pros::controller_digital_e_t button;
+    pros::controller_digital_e_t button;
+    const CommandBase* command;
+    const CommandBase* command;
+    Edge edge;
+    Edge edge;
+    CommandBase* runningCommand;  // Track the specific running command instance
+};
+};
+
+
+class JoystickBinder {
+class JoystickBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling };
+    enum class Edge { None, Rising, Falling, WhileTrue };
+    JoystickBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), prev(false) {}
+    JoystickBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+
+
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+        this->stick = stick;
+        this->stick = stick;
+@@ -188,12 +234,43 @@ class JoystickBinder {
+        controller->joystickBinders.emplace_back(*this);
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+        return controller->joystickBinders.back();
+    }
+    }
+    
+    JoystickBinder& whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+        this->stick = stick;
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::WhileTrue;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+
+
+    void poll() {
+    void poll() {
+        int curr = controller->get_analog(stick);
+        int curr = controller->get_analog(stick);
+        bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
+        bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
+        if (edge == Edge::Rising && above && !prev) controller->addCommand(command);
+        if (edge == Edge::Rising && above && !prev) controller->addCommand(command);
+        if (edge == Edge::Falling && !above && prev) controller->addCommand(command);
+        if (edge == Edge::Falling && !above && prev) controller->addCommand(command);
+        if (edge == Edge::WhileTrue) {
+            if (above && !runningCommand) {
+                // Threshold exceeded - start the command and store reference
+                runningCommand = controller->addCommand(command);
+            } else if (!above && runningCommand) {
+                // Below threshold - cancel the specific command instance
+                controller->cancelCommand(runningCommand);
+                runningCommand = nullptr;
+            }
+        }
+        prev = above;
+        prev = above;
+    }
+    }
+
+
+@@ -204,6 +281,7 @@ class JoystickBinder {
+    const CommandBase* command;
+    const CommandBase* command;
+    bool prev;
+    bool prev;
+    Edge edge;
+    Edge edge;
+    CommandBase* runningCommand;  // Track the specific running command instance
+};
+};
+
+
+inline ButtonBinder Controller::setButtonCommand() {
+inline ButtonBinder Controller::setButtonCommand() {
+@@ -223,6 +301,4 @@ inline void Controller::poll() {
+    }
+    }
+}
+}
+
+
+} // namespace scheduler
+#endif
+#endif
+‎Test2025/command_test/include/custom/subsystem/controllerScreenSubsystem.h‎
++15-8Lines changed: 15 additions & 8 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,16 +6,19 @@
+
+
+class ControllerScreenSubsystem : public SubsystemBase {
+class ControllerScreenSubsystem : public SubsystemBase {
+public:
+public:
+    inline ControllerScreenSubsystem(scheduler::Controller* con) : controller(con), count(0), countPulse(0) {
+    inline ControllerScreenSubsystem(Controller* con) : controller(con), count(0), countPulse(0) {
+        controller->clear();
+        controller->clear();
+        debugPrint = true;
+    }
+    }
+
+
+    inline void tick() {
+    inline void tick() {
+        ++count;
+        ++count;
+        debugPrint = true;
+    }
+    }
+
+
+    inline void tickPulse() {
+    inline void tickPulse() {
+        ++countPulse;
+        ++countPulse;
+        debugPrint = true;
+    }
+    }
+
+
+    inline void periodic() override {
+    inline void periodic() override {
+@@ -24,17 +27,21 @@ class ControllerScreenSubsystem : public SubsystemBase {
+    }
+    }
+
+
+private:
+private:
+    scheduler::Controller* controller;
+    Controller* controller;
+    uint16_t count;
+    uint16_t count;
+    uint16_t countPulse;
+    uint16_t countPulse;
+    bool debugPrint;
+
+
+    inline void updateScreen() {
+    inline void updateScreen() {
+        printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+        if(debugPrint) {
+        bool result1 = controller->print(0, 0, "Seconds: %d", count);
+            printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+        pros::delay(50); // added for print buffer
+            bool result1 = controller->print(0, 0, "Seconds: %d", count);
+        bool result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+            pros::delay(50); // added for print buffer
+        pros::delay(50); // added for print buffer
+            bool result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+        printf("Print results: line0=%d, line1=%d\n", result1, result2);
+            pros::delay(50); // added for print buffer
+            printf("Print results: line0=%d, line1=%d\n", result1, result2);
+            debugPrint = false;
+        }
+    }
+    }
+};
+};
+
+
+‎Test2025/command_test/include/main.h‎
++1Lines changed: 1 addition & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -57,6 +57,7 @@
+#include "custom/command/up.h"
+#include "custom/command/up.h"
+#include "custom/command/pulse.h"
+#include "custom/command/pulse.h"
+#include "custom/command/myTime.h"
+#include "custom/command/myTime.h"
+#include "custom/command/moveWithOutLimit.h"
+
+
+/**
+/**
+ * If you find doing pros::Motor() to be tedious and you'd prefer just to do
+ * If you find doing pros::Motor() to be tedious and you'd prefer just to do
+‎Test2025/command_test/src/main.cpp‎
++6-2Lines changed: 6 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -2,8 +2,8 @@
+
+
+std::vector<std::unique_ptr<CommandBase>>* schedulerList = new std::vector<std::unique_ptr<CommandBase>>();
+std::vector<std::unique_ptr<CommandBase>>* schedulerList = new std::vector<std::unique_ptr<CommandBase>>();
+
+
+scheduler::Controller controller(pros::E_CONTROLLER_MASTER, schedulerList);
+Controller controller(pros::E_CONTROLLER_MASTER, schedulerList);
+//scheduler::Controller controller2(pros::E_CONTROLLER_PARTNER, schedulerList);
+//Controller controller2(pros::E_CONTROLLER_PARTNER, schedulerList);
+
+
+// Add Subsystems Here
+// Add Subsystems Here
+MotorSubsystem* motorSub = new MotorSubsystem();
+MotorSubsystem* motorSub = new MotorSubsystem();
+@@ -15,6 +15,10 @@ void configureBindings() {
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub, screenSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub, screenSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub));
+    // WPILib-style whileTrue - motor runs continuously while A button is held, stops when released
+    controller.setButtonCommand().whileTrue(pros::E_CONTROLLER_DIGITAL_A, new MoveWithoutLimit(motorSub, true));
+    // Another whileTrue example with B button
+    controller.setButtonCommand().whileTrue(pros::E_CONTROLLER_DIGITAL_B, new MoveWithoutLimit(motorSub, false));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->stop(); }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->stop(); }));
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.
+whileTrue without bugs · KSUBlackSquirrel/VexU-Code-2024-2025@e963fc5

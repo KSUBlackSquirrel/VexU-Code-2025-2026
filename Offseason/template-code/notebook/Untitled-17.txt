@@ -1,0 +1,1129 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+13 files changed
+
+    1 contributor
+
+Commits on Sep 17, 2025
+
+    buildable drive test 
+
+@IanRohrbacher
+IanRohrbacher committed on Sep 17
+
+Showing
+with 413 additions and 296 deletions.
+2 changes: 1 addition & 1 deletion 2
+Offseason/drive-test/Makefile
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -17,7 +17,7 @@ EXTRA_CFLAGS=
+EXTRA_CXXFLAGS=
+EXTRA_CXXFLAGS=
+
+
+# Set to 1 to enable hot/cold linking
+# Set to 1 to enable hot/cold linking
+USE_PACKAGE:=1
+USE_PACKAGE:=0
+
+
+# Add libraries you do not wish to include in the cold image here
+# Add libraries you do not wish to include in the cold image here
+# EXCLUDE_COLD_LIBRARIES:= $(FWDIR)/your_library.a
+# EXCLUDE_COLD_LIBRARIES:= $(FWDIR)/your_library.a
+19 changes: 14 additions & 5 deletions 19
+Offseason/drive-test/include/custom/command/commandBase.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,3 +1,6 @@
+// CommandBase.h
+// Abstract base class for all commands in the scheduler system.
+// Commands encapsulate actions and can require or use subsystems.
+#ifndef COMMANDBASE_H_
+#ifndef COMMANDBASE_H_
+#define COMMANDBASE_H_
+#define COMMANDBASE_H_
+
+
+@@ -6,18 +9,24 @@
+
+
+class SubsystemBase;
+class SubsystemBase;
+
+
+// CommandBase: interface for all commands that can be scheduled and executed
+class CommandBase {
+class CommandBase {
+public:
+public:
+    CommandBase() {}
+    CommandBase() {}
+
+
+    // Called every tick while the command is scheduled
+    virtual void execute() = 0;
+    virtual void execute() = 0;
+    // Called when the command ends (naturally or interrupted)
+    virtual void end() = 0;
+    virtual void end() = 0;
+    // Returns true if the command is finished and should be removed
+    virtual bool isFinished() = 0;
+    virtual bool isFinished() = 0;
+    // Called if the command is interrupted by another command requiring the same subsystem
+    virtual void interrupted() { end(); };
+    virtual void interrupted() { end(); };
+
+
+    // Clone the command (used for scheduling new instances)
+    virtual CommandBase* clone() const = 0;
+    virtual CommandBase* clone() const = 0;
+
+
+    // Add a subsystem requirement - this will interrupt any commands using the same subsystem
+    // Add a subsystem requirement - interrupts any commands using the same subsystem
+    inline void addRequirements(SubsystemBase* subsystem) {
+    inline void addRequirements(SubsystemBase* subsystem) {
+        if (subsystem != nullptr) {
+        if (subsystem != nullptr) {
+            requiredSubsystems.push_back(subsystem);
+            requiredSubsystems.push_back(subsystem);
+@@ -31,19 +40,19 @@ class CommandBase {
+        }
+        }
+    }
+    }
+
+
+    // Get all required subsystems - non-virtual to prevent overriding
+    // Get all required subsystems (for interruption logic)
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+        return requiredSubsystems;
+        return requiredSubsystems;
+    }
+    }
+
+
+    // Get all used subsystems - non-virtual to prevent overriding
+    // Get all used subsystems (for periodic updates)
+    inline const std::vector<SubsystemBase*>& getUsedSubsystems() const {
+    inline const std::vector<SubsystemBase*>& getUsedSubsystems() const {
+        return usedSubsystems;
+        return usedSubsystems;
+    }
+    }
+
+
+private:
+private:
+    std::vector<SubsystemBase*> requiredSubsystems;  // For interruption logic
+    std::vector<SubsystemBase*> requiredSubsystems;  // Subsystems required for this command
+    std::vector<SubsystemBase*> usedSubsystems;      // For periodic updates
+    std::vector<SubsystemBase*> usedSubsystems;      // Subsystems used for periodic updates
+};
+};
+
+
+#endif
+#endif
+8 changes: 8 additions & 0 deletions 8
+Offseason/drive-test/include/custom/command/instantCommand.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,3 +1,6 @@
+// InstantCommand.h
+// Utility command for running a single action instantly (one tick).
+// Useful for button bindings that trigger a lambda or function.
+#ifndef INSTANTCOMMAND_H_
+#ifndef INSTANTCOMMAND_H_
+#define INSTANTCOMMAND_H_
+#define INSTANTCOMMAND_H_
+
+
+@@ -6,16 +9,21 @@
+
+
+class InstantCommand : public CommandBase  {
+class InstantCommand : public CommandBase  {
+public:
+public:
+    // Construct with a function to run and optional subsystem requirement
+    InstantCommand(std::function<void()> func, SubsystemBase* subsystem = nullptr) : action(func) {
+    InstantCommand(std::function<void()> func, SubsystemBase* subsystem = nullptr) : action(func) {
+        if (subsystem) addRequirements(subsystem);
+        if (subsystem) addRequirements(subsystem);
+    }
+    }
+
+
+    // Run the action once when scheduled
+    inline void execute() override { if (action) action(); }
+    inline void execute() override { if (action) action(); }
+
+
+    // InstantCommand always finishes after one tick
+    inline bool isFinished() override { return true; }
+    inline bool isFinished() override { return true; }
+
+
+    // No cleanup needed
+    inline void end() override {}
+    inline void end() override {}
+
+
+    // Clone the command, copying requirements
+    inline CommandBase* clone() const override { 
+    inline CommandBase* clone() const override { 
+        auto clone = new InstantCommand(action);
+        auto clone = new InstantCommand(action);
+        // Copy requirements from original command
+        // Copy requirements from original command
+290 changes: 27 additions & 263 deletions 290
+Offseason/drive-test/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,278 +1,55 @@
+#ifndef CONTROLLER_HPP_
+#ifndef CONTROLLER_HPP_
+#define CONTROLLER_HPP_
+#define CONTROLLER_HPP_
+
+
+#include "main.h"
+class Scheduler;
+#include "custom/command/commandBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include <array>
+#include <array>
+#include <typeinfo>
+#include <vector>
+#include <vector>
+
+
+class ButtonBinder;
+class ButtonBinder;
+class JoystickBinder;
+class JoystickBinder;
+
+
+class Controller : public pros::Controller {
+class Controller : public pros::Controller {
+public:
+public:
+    Controller(pros::controller_id_e_t id, std::vector<std::unique_ptr<CommandBase>>* sch)
+    Controller(pros::controller_id_e_t id, Scheduler* sch);
+        : pros::Controller(id), scheduler(sch) {
+    ButtonBinder setButtonCommand();
+        prevButtonStates.fill(false);
+    JoystickBinder setJoystickCommand();
+    }
+    void poll();
+
+    inline CommandBase* addCommand(const CommandBase* cmd) { 
+        // Check for conflicts with existing commands
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        if (!requiredSubsystems.empty()) {
+            // Check for existing commands using any of the same subsystems
+            for (auto it = scheduler->begin(); it != scheduler->end(); ) {
+                const auto& existingSubsystems = (*it)->getRequiredSubsystems();
+                bool conflict = false;
+
+                // Check if there's any overlap in subsystems
+                for (SubsystemBase* newSub : requiredSubsystems) {
+                    for (SubsystemBase* existingSub : existingSubsystems) {
+                        if (newSub == existingSub) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    if (conflict) break;
+                }
+
+                if (conflict) {
+                    // Found conflict - interrupt the existing command
+                    (*it)->interrupted();
+                    it = scheduler->erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        // Add the new command and return pointer to the running instance
+        auto clonedCmd = std::unique_ptr<CommandBase>(cmd->clone());
+        CommandBase* runningInstance = clonedCmd.get();
+        scheduler->push_back(std::move(clonedCmd));
+        return runningInstance;
+    }
+
+    void cancelCommand(CommandBase* commandInstance) {
+        if (!commandInstance) return;
+
+        // Find and cancel the specific command instance
+        for (auto it = scheduler->begin(); it != scheduler->end(); ++it) {
+            if (it->get() == commandInstance) {
+                (*it)->end();  // Call end() for normal whileTrue termination
+                scheduler->erase(it);
+                break;
+            }
+        }
+    }
+
+    // Register a subsystem for periodic updates
+    inline void registerSubsystemForPeriodic(SubsystemBase* subsystem) {
+        if (subsystem != nullptr) {
+            // Check if already in the list
+            for (SubsystemBase* existing : periodicSubsystems) {
+                if (existing == subsystem) {
+                    return; // Already registered
+                }
+            }
+            periodicSubsystems.push_back(subsystem);
+        }
+    }
+
+    // Update all registered subsystems
+    inline void updateSubsystems() {
+        for (SubsystemBase* subsystem : periodicSubsystems) {
+            subsystem->periodic();
+        }
+    }
+
+    inline ButtonBinder setButtonCommand();
+
+    inline JoystickBinder setJoystickCommand();
+
+    inline void poll();
+
+
+    std::array<bool, 12> prevButtonStates;
+    std::array<bool, 12> prevButtonStates;
+    std::vector<ButtonBinder> buttonBinders;
+    std::vector<ButtonBinder> buttonBinders;
+    std::vector<JoystickBinder> joystickBinders;
+    std::vector<JoystickBinder> joystickBinders;
+
+    Scheduler* scheduler;
+private:
+    std::vector<std::unique_ptr<CommandBase>>* scheduler;
+    std::vector<SubsystemBase*> periodicSubsystems;
+};
+};
+
+
+enum class Edge { None, Rising, Falling, WhileTrue };
+
+class ButtonBinder {
+class ButtonBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling, WhileTrue };
+    ButtonBinder(Controller* ctrl);
+    ButtonBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), runningCommand(nullptr) {}
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
+
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd);
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd);
+        button = btn;
+    void poll();
+        command = cmd;
+        edge = Edge::Rising;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        command = cmd;
+        edge = Edge::Falling;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+
+    ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        command = cmd;
+        edge = Edge::WhileTrue;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+
+    void poll() {
+        if (edge == Edge::Rising)  { bool curr = controller->get_digital_new_press(button);    if (curr) controller->addCommand(command); }
+        if (edge == Edge::Falling) { bool curr = controller->get_digital_new_release(button);  if (curr) controller->addCommand(command); }
+        if (edge == Edge::WhileTrue) { 
+            bool curr = controller->get_digital(button); 
+            if (curr && !runningCommand) {
+                // Button pressed - start the command and store reference
+                runningCommand = controller->addCommand(command);
+            } else if (!curr && runningCommand) {
+                // Button released - cancel the specific command instance
+                controller->cancelCommand(runningCommand);
+                runningCommand = nullptr;
+            }
+        }
+    }
+
+
+private:
+private:
+    Controller* controller;
+    Controller* controller;
+    pros::controller_digital_e_t button;
+    pros::controller_digital_e_t button;
+    const CommandBase* command;
+    const CommandBase* command;
+    Edge edge;
+    Edge edge;
+    CommandBase* runningCommand;  // Track the specific running command instance
+    CommandBase* runningCommand;
+    void registerSubsystems(const CommandBase* cmd);
+};
+};
+
+
+
+class JoystickBinder {
+class JoystickBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling, WhileTrue };
+    JoystickBinder(Controller* ctrl);
+    JoystickBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+
+    JoystickBinder& onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    JoystickBinder& whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+        this->stick = stick;
+    void poll();
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::Rising;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+    JoystickBinder& onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+        this->stick = stick;
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::Falling;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+
+    JoystickBinder& whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+        this->stick = stick;
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::WhileTrue;
+
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+
+    void poll() {
+        int curr = controller->get_analog(stick);
+        bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
+        if (edge == Edge::Rising && above && !prev) controller->addCommand(command);
+        if (edge == Edge::Falling && !above && prev) controller->addCommand(command);
+        if (edge == Edge::WhileTrue) {
+            if (above && !runningCommand) {
+                // Threshold exceeded - start the command and store reference
+                runningCommand = controller->addCommand(command);
+            } else if (!above && runningCommand) {
+                // Below threshold - cancel the specific command instance
+                controller->cancelCommand(runningCommand);
+                runningCommand = nullptr;
+            }
+        }
+        prev = above;
+    }
+
+
+private:
+private:
+    Controller* controller;
+    Controller* controller;
+@@ -281,24 +58,11 @@ class JoystickBinder {
+    const CommandBase* command;
+    const CommandBase* command;
+    bool prev;
+    bool prev;
+    Edge edge;
+    Edge edge;
+    CommandBase* runningCommand;  // Track the specific running command instance
+    CommandBase* runningCommand;
+    void registerSubsystems(const CommandBase* cmd);
+};
+};
+
+
+inline ButtonBinder Controller::setButtonCommand() {
+    return ButtonBinder(this);
+}
+
+inline JoystickBinder Controller::setJoystickCommand() {
+    return JoystickBinder(this);
+}
+
+
+inline void Controller::poll() {
+    for (auto& binder : buttonBinders) {
+        binder.poll();
+    }
+    for (auto& binder : joystickBinders) {
+        binder.poll();
+    }
+}
+
+
+#endif
+#include "custom/scheduler.h"
+#endif //CONTROLLER_HPP_
+23 changes: 20 additions & 3 deletions 23
+Offseason/drive-test/include/custom/globals.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,7 +1,24 @@
+#ifndef _GLOBALS_H_
+#ifndef GLOBALS_HPP_
+#define _GLOBALS_H_
+#define GLOBALS_HPP_
+
+#include "main.h"
+
+namespace MotorTools {
+inline int percentToVelocity(int percent, pros::MotorGears color) {
+    int maxRpm = 0;
+    switch (color) {
+        case pros::MotorGearset::red:   maxRpm = 100; break;
+        case pros::MotorGearset::green: maxRpm = 200; break;
+        case pros::MotorGearset::blue:  maxRpm = 600; break;
+        default: maxRpm = 0; break;
+    }
+    return static_cast<int>(percent * maxRpm / 100.0);
+}
+} // namespace motor tools 
+
+
+
+namespace globalDrive {
+namespace globalDrive {
+const static pros::controller_id_e_t mainControllerID = pros::E_CONTROLLER_MASTER;
+const static pros::controller_analog_e_t leftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
+const static pros::controller_analog_e_t leftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
+const static pros::controller_analog_e_t rightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
+const static pros::controller_analog_e_t rightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
+
+
+@@ -17,6 +34,6 @@ const static int wheelRPM = 400;
+const static int horizontalDrift = 2;
+const static int horizontalDrift = 2;
+
+
+const static int imuID = 5;
+const static int imuID = 5;
+}
+} // namespace drive vars
+
+
+#endif
+#endif
+29 changes: 29 additions & 0 deletions 29
+Offseason/drive-test/include/custom/scheduler.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,29 @@
+#ifndef SCHEDULER_HPP_
+#define SCHEDULER_HPP_
+
+class Controller;
+#include "custom/command/commandBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include <vector>
+#include <memory>
+
+class Scheduler {
+public:
+    Scheduler();
+    void registerController(Controller* ctrl);
+    void pollControllers();
+    CommandBase* addCommand(const CommandBase* cmd);
+    void cancelCommand(CommandBase* commandInstance);
+    void registerSubsystemForPeriodic(SubsystemBase* subsystem);
+    void updateSubsystems();
+    void tick();
+    std::size_t size() const;
+    bool empty() const;
+
+private:
+    std::vector<std::unique_ptr<CommandBase>> queue;
+    std::vector<SubsystemBase*> periodicSubsystems;
+    std::vector<Controller*> controllers;
+};
+
+#endif // SCHEDULER_HPP_
+5 changes: 5 additions & 0 deletions 5
+Offseason/drive-test/include/custom/subsystem/subsystemBase.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,12 +1,17 @@
+// SubsystemBase.h
+// Abstract base class for all subsystems in the command scheduler system.
+// Subsystems represent hardware or logical units that can be updated periodically.
+#ifndef SUBSYSTEMBASE_H_
+#ifndef SUBSYSTEMBASE_H_
+#define SUBSYSTEMBASE_H_
+#define SUBSYSTEMBASE_H_
+
+
+#include "custom/globals.h"
+#include "custom/globals.h"
+
+
+class SubsystemBase {
+class SubsystemBase {
+public:
+public:
+    // Called every loop if registered with the scheduler
+    virtual void periodic() {};
+    virtual void periodic() {};
+
+
+    // Ensure proper cleanup for derived subsystems
+    virtual ~SubsystemBase() = default;
+    virtual ~SubsystemBase() = default;
+};
+};
+
+
+8 changes: 6 additions & 2 deletions 8
+Offseason/drive-test/include/main.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -42,13 +42,17 @@
+//#include "okapi/api.hpp"
+//#include "okapi/api.hpp"
+#include "lemlib/api.hpp" // IWYU pragma: keep
+#include "lemlib/api.hpp" // IWYU pragma: keep
+#include "pros/colors.hpp"
+#include "pros/colors.hpp"
+#include "custom/globals.h"
+
+#include "custom/scheduler.h"
+#include "custom/controller.h"
+#include "custom/controller.h"
+#include "custom/globals.h"
+
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/instantCommand.h"
+#include "custom/command/instantCommand.h"
+
+
+
+// #include "custom/command/driveCommand.h"
+// #include "custom/subsystem/driveSubsystem.h"
+
+
+
+
+
+
+159 changes: 159 additions & 0 deletions 159
+Offseason/drive-test/src/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,159 @@
+// Controller.cpp
+// Implements the Controller class and its binder helpers for button/joystick command scheduling.
+// This file handles polling controller inputs and scheduling commands via the Scheduler.
+#include "main.h"
+
+
+// Controller constructor: initializes the controller and binds it to a scheduler.
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+    : pros::Controller(id), scheduler(sch) {
+    prevButtonStates.fill(false);
+}
+
+
+// Create a new ButtonBinder for this controller
+ButtonBinder Controller::setButtonCommand() {
+    return ButtonBinder(this);
+}
+
+// Create a new JoystickBinder for this controller
+JoystickBinder Controller::setJoystickCommand() {
+    return JoystickBinder(this);
+}
+
+// Poll all binders to check for input events and schedule/cancel commands
+void Controller::poll() {
+    for (auto& binder : buttonBinders) binder.poll();
+    for (auto& binder : joystickBinders) binder.poll();
+}
+
+// ButtonBinder constructor: binds to a controller
+ButtonBinder::ButtonBinder(Controller* ctrl)
+    : controller(ctrl), edge(Edge::None), runningCommand(nullptr) {}
+
+// Bind a command to a button press (rising edge)
+ButtonBinder& ButtonBinder::onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    edge = Edge::Rising;
+    registerSubsystems(cmd);
+    controller->buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+}
+
+// Bind a command to a button release (falling edge)
+ButtonBinder& ButtonBinder::onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    edge = Edge::Falling;
+    registerSubsystems(cmd);
+    controller->buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+}
+
+// Bind a command to while a button is held
+ButtonBinder& ButtonBinder::whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    button = btn;
+    command = cmd;
+    edge = Edge::WhileTrue;
+    registerSubsystems(cmd);
+    controller->buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+}
+
+// Poll the button for events and schedule/cancel commands as needed
+void ButtonBinder::poll() {
+    if (edge == Edge::Rising) {
+        bool curr = controller->get_digital_new_press(button);
+        if (curr) controller->scheduler->addCommand(command);
+    }
+    if (edge == Edge::Falling) {
+        bool curr = controller->get_digital_new_release(button);
+        if (curr) controller->scheduler->addCommand(command);
+    }
+    if (edge == Edge::WhileTrue) {
+        bool curr = controller->get_digital(button);
+        if (curr && !runningCommand) {
+            runningCommand = controller->scheduler->addCommand(command);
+        } else if (!curr && runningCommand) {
+            controller->scheduler->cancelCommand(runningCommand);
+            runningCommand = nullptr;
+        }
+    }
+}
+
+// Register all subsystems required/used by this command for periodic updates
+void ButtonBinder::registerSubsystems(const CommandBase* cmd) {
+    const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+    for (SubsystemBase* subsystem : requiredSubsystems) {
+        controller->scheduler->registerSubsystemForPeriodic(subsystem);
+    }
+    const auto& usedSubsystems = cmd->getUsedSubsystems();
+    for (SubsystemBase* subsystem : usedSubsystems) {
+        controller->scheduler->registerSubsystemForPeriodic(subsystem);
+    }
+}
+
+// JoystickBinder constructor: binds to a controller
+JoystickBinder::JoystickBinder(Controller* ctrl)
+    : controller(ctrl), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+
+// Bind a command to joystick movement (rising edge, falling edge, or while held)
+JoystickBinder& JoystickBinder::onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    edge = Edge::Rising;
+    registerSubsystems(cmd);
+    controller->joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+}
+
+JoystickBinder& JoystickBinder::onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    edge = Edge::Falling;
+    registerSubsystems(cmd);
+    controller->joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+}
+
+JoystickBinder& JoystickBinder::whileTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    this->stick = stick;
+    this->threshold = threshold;
+    this->command = cmd;
+    edge = Edge::WhileTrue;
+    registerSubsystems(cmd);
+    controller->joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+}
+
+// Poll the joystick for events and schedule/cancel commands as needed
+void JoystickBinder::poll() {
+    int curr = controller->get_analog(stick);
+    bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
+    if (edge == Edge::Rising && above && !prev) controller->scheduler->addCommand(command);
+    if (edge == Edge::Falling && !above && prev) controller->scheduler->addCommand(command);
+    if (edge == Edge::WhileTrue) {
+        if (above && !runningCommand) {
+            runningCommand = controller->scheduler->addCommand(command);
+        } else if (!above && runningCommand) {
+            controller->scheduler->cancelCommand(runningCommand);
+            runningCommand = nullptr;
+        }
+    }
+    prev = above;
+}
+
+// Register all subsystems required/used by this command for periodic updates
+void JoystickBinder::registerSubsystems(const CommandBase* cmd) {
+    const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+    for (SubsystemBase* subsystem : requiredSubsystems) {
+        controller->scheduler->registerSubsystemForPeriodic(subsystem);
+    }
+    const auto& usedSubsystems = cmd->getUsedSubsystems();
+    for (SubsystemBase* subsystem : usedSubsystems) {
+        controller->scheduler->registerSubsystemForPeriodic(subsystem);
+    }
+}
+40 changes: 18 additions & 22 deletions 40
+Offseason/drive-test/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,25 +1,32 @@
+#include "main.h"
+#include "main.h"
+
+
+std::vector<std::unique_ptr<CommandBase>>* schedulerList = new std::vector<std::unique_ptr<CommandBase>>();
+static Scheduler scheduler;
+
+
+Controller controller(pros::E_CONTROLLER_MASTER, schedulerList);
+Controller controller(globalDrive::mainControllerID, &scheduler);
+//Controller controller2(pros::E_CONTROLLER_PARTNER, schedulerList);
+
+
+// Add Subsystems Here
+// Add Subsystems Here
+
+
+// Add Any Button Bindings Here
+// Add Any Button Bindings Here
+void configureBindings() {
+void configureBindings() {
+
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_A, new InstantCommand([] { int num=0; }));
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([] { int num=0; }));
+}
+}
+
+
+
+/**
+/**
+ * Runs initialization code. This occurs as soon as the program is started.
+ * This function runs once when the program starts. It sets up all controller bindings
+ * and registers the controller with the scheduler. This is where you configure your
+ * command-based system before any competition modes begin.
+ *
+ * - configureBindings(): Sets up all button/joystick bindings for the controller.
+ * - scheduler.registerController(&controller): Registers the controller so its inputs
+ *   are polled and commands can be scheduled during opcontrol.
+ *
+ *
+ * All other competition modes are blocked by initialize; it is recommended
+ * Keep this function fast—long operations here will block competition modes.
+ * to keep execution time for this mode under a few seconds.
+ */
+ */
+void initialize() {
+void initialize() {
+    configureBindings();
+    configureBindings();
+    scheduler.registerController(&controller);
+}
+}
+
+
+/**
+/**
+@@ -68,23 +75,12 @@ void autonomous() {}
+ */
+ */
+void opcontrol() {
+void opcontrol() {
+    while (true) {
+    while (true) {
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "List Size: %3d", schedulerList->size());
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "List Size: %3d", static_cast<int>(scheduler.size()));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+
+
+        controller.poll();                                                      // 1. Check all bindings and schedules commands as needed
+        scheduler.pollControllers();    // 1. Check all bindings and schedule commands as needed
+
+        scheduler.tick();               // 2-4. Run, finish, clean up
+        for (auto it = schedulerList->begin(); it != schedulerList->end();) {
+        scheduler.updateSubsystems();   // Update all registered subsystems once per loop
+            (*it)->execute();                                                   // 2. Run the command's main logic
+            if ((*it)->isFinished()) {                                          // 3. Check if finished
+                (*it)->end();                                                   // 4. Clean up if finished
+                it = schedulerList->erase(it);                                  // Remove from scheduler
+            } else {
+                ++it;
+            }
+        }
+
+        // Update all registered subsystems once per loop
+        controller.updateSubsystems();
+
+
+        pros::delay(30);
+        pros::delay(30);
+    }
+    }
+91 changes: 91 additions & 0 deletions 91
+Offseason/drive-test/src/scheduler.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,91 @@
+// Scheduler.cpp
+// Implements the Scheduler class for command scheduling, execution, and subsystem updates.
+// Handles the main command queue and periodic subsystem management.
+#include "main.h"
+
+// Scheduler constructor: initializes the scheduler
+Scheduler::Scheduler() = default;
+
+// Register a controller for polling (button/joystick events)
+void Scheduler::registerController(Controller* ctrl) {
+    controllers.push_back(ctrl);
+}
+
+// Poll all registered controllers to process input events
+void Scheduler::pollControllers() {
+    for (Controller* ctrl : controllers) {
+        ctrl->poll();
+    }
+}
+
+// Add a command to the scheduler queue, handling subsystem conflicts
+CommandBase* Scheduler::addCommand(const CommandBase* cmd) {
+    const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+    if (!requiredSubsystems.empty()) {
+        for (auto it = queue.begin(); it != queue.end();) {
+            const auto& existingSubsystems = (*it)->getRequiredSubsystems();
+            bool conflict = false;
+            for (SubsystemBase* newSub : requiredSubsystems) {
+                for (SubsystemBase* existingSub : existingSubsystems) {
+                    if (newSub == existingSub) { conflict = true; break; }
+                }
+                if (conflict) break;
+            }
+            if (conflict) {
+                (*it)->interrupted();
+                it = queue.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    auto clonedCmd = std::unique_ptr<CommandBase>(cmd->clone());
+    CommandBase* runningInstance = clonedCmd.get();
+    queue.push_back(std::move(clonedCmd));
+    return runningInstance;
+}
+
+// Cancel a specific command instance in the queue
+void Scheduler::cancelCommand(CommandBase* commandInstance) {
+    if (!commandInstance) return;
+    for (auto it = queue.begin(); it != queue.end(); ++it) {
+        if (it->get() == commandInstance) {
+            (*it)->end();
+            queue.erase(it);
+            break;
+        }
+    }
+}
+
+// Register a subsystem for periodic updates (called every loop)
+void Scheduler::registerSubsystemForPeriodic(SubsystemBase* subsystem) {
+    if (subsystem == nullptr) return;
+    for (SubsystemBase* existing : periodicSubsystems) {
+        if (existing == subsystem) return;
+    }
+    periodicSubsystems.push_back(subsystem);
+}
+
+// Call periodic() on all registered subsystems
+void Scheduler::updateSubsystems() {
+    for (SubsystemBase* subsystem : periodicSubsystems) {
+        subsystem->periodic();
+    }
+}
+
+// Run one scheduler tick: execute, finish, cleanup commands
+void Scheduler::tick() {
+    for (auto it = queue.begin(); it != queue.end();) {
+        (*it)->execute();
+        if ((*it)->isFinished()) {
+            (*it)->end();
+            it = queue.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+// Utility helpers for queue size and empty check
+std::size_t Scheduler::size() const { return queue.size(); }
+bool Scheduler::empty() const { return queue.empty(); }
+35 changes: 35 additions & 0 deletions 35
+Offseason/drive-test/static/driveCommand.txt
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,35 @@
+#ifndef DRIVECOMMAND_H_
+#define DRIVECOMMAND_H_
+
+#include "commandBase.h"
+#include "custom/subsystem/driveSubsystem.h"
+#include "custom/globals.h"
+
+class SubsystemBase;
+
+class DriveCommand: public CommandBase {
+public:
+    DriveCommand(DriveSubsystem* sub) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+    inline void execute() override {
+        subsystem->tankDrive(globalDrive::mainControllerID, false);
+    }
+
+    inline void end() override {}
+
+    inline void interrupted() override {}
+
+    inline bool isFinished() override { return false; }
+
+    inline CommandBase* clone() const override {
+        return new DriveCommand(*this);
+    }
+
+private:
+    DriveSubsystem* subsystem;
+};
+
+#endif
+0
+...include/custom/subsystem/driveSubsystem.h → ...ason/drive-test/static/driveSubsystem.txt
+File renamed without changes.
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

@@ -1,0 +1,437 @@
+BACKUP
+
+
+# VEX U Notebook: A Week-by-Week Guide
+
+This notebook serves as a comprehensive guide to our VEX U robotics project, detailing our progress, decisions, and technical implementations week by week. Each section is designed to help readers follow along and replicate our work.
+
+---
+
+## Week 1: Planning and Architecture Design
+
+We began by discussing how to structure the robot's code. Three programming styles were considered:
+
+1. **Simple Imperative:**
+   - Directly maps controller inputs to actions.
+   - Example: "If the controller button is pressed, then perform an action; otherwise, stop."
+   - Pros: Easy to implement for simple tasks.
+   - Cons: Becomes unmanageable as complexity increases.
+
+2. **State Machine:**
+   - Organizes robot behavior into discrete named modes (states).
+   - Transitions between states occur when defined conditions (e.g., button presses, sensor inputs) are met.
+   - Each state has:
+     - Entry action (run once when entering).
+     - Continuous action (run every loop while in the state).
+     - Exit action (run once when leaving).
+   - Pros: Compact and easy to reason about for sequential tasks.
+   - Cons: Can become complex with many states and transitions.
+
+3. **Command-Based System:**
+   - Inspired by FRC WPILib, this modular framework organizes code into commands and subsystems.
+   - Commands represent specific tasks, while subsystems represent physical components of the robot.
+   - Pros: Highly organized, reusable, and scalable.
+   - Cons: Requires more initial setup and understanding.
+
+**Decision:** We committed to building our own command-based framework from scratch, inspired by FRC's WPILib, but tailored specifically for VEX V5 robots using the PROS environment.
+
+**[PHOTO NEEDED: Whiteboard diagram comparing the three programming styles with pros/cons listed.]**
+
+---
+
+## Week 2: Foundation - Scheduler, Commands, and Subsystems
+
+With the decision to use a command-based system, we began laying the foundation for our framework. This involved designing three core components:
+
+1. **Scheduler:**
+   - Manages when and how commands run.
+   - Continuously updates every robot cycle (about 20 milliseconds).
+   - Ensures only one command controls a subsystem at a time, preventing conflicts.
+   - Automatically runs a subsystem's default command when no other command is using it.
+
+2. **Commands:**
+   - Small blocks of code designed for specific tasks (e.g., driving, controlling pneumatics).
+   - Lifecycle stages:
+     - `initialize()`: Runs once to set up variables.
+     - `execute()`: Runs continuously while the command is active.
+     - `isFinished()`: Determines when the command should end.
+     - `end()`: Runs once when the command finishes or is interrupted.
+
+3. **Subsystems:**
+   - Represent physical components of the robot (e.g., drivetrain, intake).
+   - Provide basic actions and hardware control logic for commands to use.
+
+**Steps to Follow:**
+1. Implement a scheduler loop that runs every 20ms to manage commands.
+2. Define command classes for each task, implementing the lifecycle methods.
+3. Build subsystem classes for each robot component, exposing simple methods for commands to use.
+4. Integrate the scheduler, commands, and subsystems to create a cohesive framework.
+
+**[PHOTO NEEDED: Architecture diagram showing Scheduler → Commands → Subsystems hierarchy.]**
+**[PHOTO NEEDED: Command lifecycle flowchart showing initialize → execute → isFinished → end.]**
+
+---
+
+## Week 3: Initial Implementation and Controller Integration
+
+**Commit:** "working command test" (June 24, fef0d07)
+
+This week marked a major milestone: our first working command-based test project! Commands could now be triggered by both buttons and joystick inputs on the controller.
+
+**What We Built:**
+- Created the `Test2025/command_test` project structure.
+- Implemented core command classes:
+  - `commandBase.h`: Base class defining the command interface.
+  - `up.h`, `down.h`: Example motor control commands.
+  - `pulse.h`: Timed motor pulse command.
+  - `instantCommand.h`: For single-action commands.
+  - `myTime.h`: Time-based command for testing.
+- Built subsystem architecture:
+  - `subsystemBase.h`: Interface all subsystems inherit from.
+  - `motorSubsystem.h`: Controls motor hardware.
+  - `controllerScreenSubsystem.h`: Manages controller display updates.
+- Developed a controller binding system in `controller.h`:
+  - `ButtonBinder` class for button press/release events.
+  - `JoystickBinder` class for analog stick threshold detection.
+  - Event-driven command scheduling.
+
+**Technical Achievement:**
+The controller integration allows binding commands to specific buttons or joystick positions. For example, pressing the LEFT button triggers the Down command, which runs the motor in reverse. Releasing it automatically ends the command.
+
+**What We Removed:**
+We had implemented a `whileTrue()` function that would continuously run a command while a condition was true, but it caused many timing bugs and conflicts with the scheduler. We removed it for now to maintain stability.
+
+**Files Added:** 587 files (including PROS libraries, LemLib motion control, LVGL graphics, and fmt formatting libraries)
+
+**[PHOTO NEEDED: Screenshot of controller.h showing button binding code.]**
+**[PHOTO NEEDED: Diagram showing button press → scheduler → command → subsystem flow.]**
+
+**TODO for Next Week:**
+- Add an interrupt function after `.onTrue()`/`.onFalse()` to interrupt any commands using the same subsystem and run an interrupted function before adding the new command
+- Allow autonomous mode to use the scheduler during auto paths
+- Wipe the scheduler between state changes (auto → teleop)
+
+---
+
+## Week 4: API Redesign - Method Chaining
+
+**Commit:** "changed the order of onTrue/False" (July, 91ec246)
+
+This week we made a significant architectural change to improve code readability and developer experience. We redesigned the controller binding API to use a builder pattern with method chaining.
+
+**Before (Old API):**
+```cpp
+controller.setButtonCommand(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub));
+controller.setJoystickCommand(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand(...));
+```
+
+**After (New API):**
+```cpp
+controller.setButtonCommand()
+    .onTrue(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub));
+    
+controller.setJoystickCommand()
+    .onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand(...));
+```
+
+**Why This Matters:**
+The new syntax is more intuitive and mirrors FRC's WPILib API, making it easier for team members familiar with FRC to understand our code. It also makes the intent clearer: we're creating a binder, then specifying what happens on a rising edge (onTrue) or falling edge (onFalse).
+
+**Implementation Changes:**
+- Modified `ButtonBinder` to accept parameters in `onTrue()`/`onFalse()` methods instead of constructor
+- Updated `JoystickBinder` similarly for consistency
+- Both binders now automatically register themselves with the controller when `.onTrue()` or `.onFalse()` is called
+- Modified `controller.h` with the new builder pattern structure
+
+**Files Changed:** 2 files in `Test2025/command_test`
+- `include/custom/controller.h` - Complete API redesign
+- `src/main.cpp` - Updated to use new binding syntax
+
+**[PHOTO NEEDED: Side-by-side code comparison showing old vs new API]**
+
+---
+
+## Week 5: Subsystem Requirements and Command Interruption
+
+**Commit:** "added interrupt" (July 15, 5100ff7)
+
+This week we solved one of our major TODOs: implementing proper command interruption based on subsystem requirements. This is a critical safety and functionality feature that prevents multiple commands from fighting over the same hardware.
+
+**The Problem:**
+Previously, if two commands both tried to control the motor subsystem simultaneously, they would conflict and cause unpredictable behavior. We needed a way to automatically cancel the old command when a new one needs the same subsystem.
+
+**The Solution - Subsystem Requirements:**
+We implemented an `addRequirements()` system (later refined to `addUsedSubsystem()`). When a command declares which subsystems it needs, the scheduler can:
+1. Check if any running command is using those subsystems
+2. Call the `interrupted()` function on the old command
+3. Remove the old command from the scheduler
+4. Add the new command
+
+**Implementation:**
+Added to `commandBase.h`:
+```cpp
+virtual void interrupted() {}  // New lifecycle method
+std::vector<SubsystemBase*> requirements;  // Track what subsystems this command uses
+void addRequirements(SubsystemBase* subsystem);  // Declare subsystem usage
+```
+
+Updated all command classes:
+- `up.h`, `down.h`, `pulse.h` - Now call `addRequirements()` in constructor
+- `instantCommand.h` - Added subsystem tracking
+- `myTime.h` - Declares screen subsystem requirement
+
+Enhanced the scheduler in `controller.h`:
+- `addCommand()` now checks for subsystem conflicts
+- `cancelCommand()` properly calls `interrupted()` before removal
+- Maintains list of active commands per subsystem
+
+**Example Usage:**
+```cpp
+class Down : public CommandBase {
+public:
+    Down(MotorSubsystem* sub) {
+        subsystem = sub;
+        addRequirements(subsystem);  // Declare we need exclusive motor access
+    }
+    
+    void interrupted() override {
+        subsystem->stop();  // Safety: stop motor if interrupted
+    }
+};
+```
+
+**Files Changed:** 8 files
+- All command headers updated with `interrupted()` and requirements
+- `controller.h` - Enhanced scheduler logic
+- `main.h` - Added missing includes
+
+**[PHOTO NEEDED: Flowchart showing command interrupt sequence when subsystem conflict detected]**
+**[PHOTO NEEDED: Code snippet showing before/after of command with requirements]**
+
+---
+
+## Week 6: Bug Fixes - Memory Management
+
+**Commit:** "issue was a memory buffer" (July 18, 9653562)
+
+This week we debugged a frustrating issue with the controller screen subsystem. The screen would occasionally freeze or display corrupted text.
+
+**Root Cause:**
+The PROS controller print buffer has a limited size and needs time between print operations. We were calling `controller->print()` too rapidly without delays, causing buffer overflows.
+
+**The Fix:**
+1. Added 50ms delays between consecutive print calls
+2. Changed return type validation from `int` to `bool` (PROS API returns 1 for success)
+3. Added debug printf statements to track print success/failure
+
+**Code Changes in `controllerScreenSubsystem.h`:**
+```cpp
+bool result1 = controller->print(0, 0, "Seconds: %d", count);
+pros::delay(50);  // Give print buffer time to clear
+bool result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+pros::delay(50);
+```
+
+**Additional Refinement:**
+Changed `myTime.h` from using `addRequirements()` to `addUsedSubsystem()` - a more semantically accurate name that better describes its purpose of tracking subsystem usage rather than enforcing exclusive requirements.
+
+Also fixed a button binding bug in `main.cpp`:
+- Changed X button from `.onFalse()` to `.onTrue()` for the MyTime command
+- This was causing the time display to only update when releasing the button instead of pressing it
+
+**[PHOTO NEEDED: Before/after screenshots of controller display showing corrupted vs clean text]**
+
+---
+
+## Week 7: WhileTrue Implementation (Second Attempt)
+
+**Commit:** "whileTrue without bugs" (July 18, e963fc5)
+
+After removing `whileTrue()` in Week 3 due to bugs, we successfully reimplemented it with proper architecture this time!
+
+**What is WhileTrue?**
+`whileTrue()` allows a command to run continuously as long as a button is held or a condition is met. This is essential for things like "hold button to run intake" or "hold joystick forward to drive."
+
+**New Command: moveWithoutLimit.h**
+Created a template command for continuous motor control:
+```cpp
+class MoveWithoutLimit : public CommandBase {
+    void execute() override {
+        subsystem->move();  // Runs every scheduler cycle while active
+    }
+    
+    bool isFinished() override {
+        return false;  // Never finishes on its own - only when interrupted
+    }
+    
+    void interrupted() override {
+        subsystem->stop();  // Critical: stop when button released
+    }
+};
+```
+
+**Controller Integration:**
+Enhanced both `ButtonBinder` and `JoystickBinder` classes with `whileTrue()` method:
+```cpp
+ButtonBinder& whileTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    // Runs command while button held, cancels when released
+}
+```
+
+**Why It Works Now:**
+1. Proper use of `interrupted()` lifecycle method ensures cleanup
+2. Scheduler correctly handles command cancellation on button release
+3. Better separation between edge-triggered (onTrue/onFalse) and level-triggered (whileTrue) bindings
+
+**Enhanced Subsystems:**
+Updated `controllerScreenSubsystem.h` with better organization:
+- Separated screen update logic from command execution
+- Added frame timing to prevent screen flicker
+- Improved printf debugging for development
+
+**Files Changed:** 8 files including new command class and controller enhancements
+
+**[PHOTO NEEDED: Timing diagram showing whileTrue command lifecycle: button press → initialize → execute loop → button release → interrupted → end]**
+**[PHOTO NEEDED: Example code showing whileTrue usage for intake or drive control]**
+
+---
+
+## Week 8: Project Organization and Multi-Robot Support
+
+**Commit:** "organization" (September 3, commit SHA starting with e963fc5)
+
+This week we organized the repository structure to support multiple robot projects. We needed separate codebases for competition robots and offseason testing while sharing the command framework.
+
+**New Structure:**
+```
+VexU-Code-2024-2025/
+├── Comp2024/
+│   └── 24in Auto tests/     # Competition-ready code
+├── Test2025/
+│   └── command_test/         # Original framework development
+└── Offseason/
+    └── command_test/         # Offseason testing and experiments
+```
+
+**What Was Moved:**
+- Created `Comp2024/24in Auto tests/` with full PROS environment
+- Copied command framework to offseason directory for safe experimentation
+- Each project has its own `firmware/` folder with LemLib, LVGL, and PROS libraries
+- Maintained consistent file structure across all projects for easy code sharing
+
+**Why This Matters:**
+- Competition code remains stable while we test new features offseason
+- Each robot can have customized subsystems while sharing core framework
+- Easy to compare implementations across different robot configurations
+- Clear separation prevents accidental changes to competition code
+
+**Files Changed:** 300+ files (mostly library duplications and project structure)
+
+**[PHOTO NEEDED: Repository folder structure diagram]**
+
+---
+
+## Week 9: Code Cleanup and Documentation
+
+**Commit:** "Update main.h" (September 10, cbd97dc)
+
+This week focused on code organization and maintainability. We cleaned up include statements and ensured proper header organization across the offseason project.
+
+**Changes Made:**
+- Reorganized includes in `main.h` for better readability
+- Moved `pros/colors.hpp` include to proper location
+- Added missing command includes for easier development
+- Verified all includes follow IWYU (Include What You Use) pragma standards
+
+**Updated Include Order:**
+```cpp
+// External libraries
+#include "lemlib/api.hpp"
+#include "pros/colors.hpp"
+
+// Framework core
+#include "custom/globals.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+
+// Command implementations
+#include "custom/command/instantCommand.h"
+#include "custom/command/up.h"
+#include "custom/command/down.h"
+#include "custom/command/pulse.h"
+#include "custom/command/myTime.h"
+#include "custom/command/moveWithOutLimit.h"
+```
+
+**Why Include Order Matters:**
+Proper include organization prevents circular dependencies, makes compilation faster, and helps other programmers understand the project structure at a glance.
+
+**[PHOTO NEEDED: Screenshot of well-organized main.h with sections labeled]**
+
+---
+
+## Summary and Future Work
+
+**What We've Accomplished:**
+Over 9 weeks, we built a complete command-based framework for VEX V5 from scratch:
+- ✅ Core scheduler with lifecycle management
+- ✅ Modular command and subsystem architecture
+- ✅ Controller bindings with button and joystick support
+- ✅ Subsystem requirement tracking and command interruption
+- ✅ WhileTrue functionality for continuous commands
+- ✅ Multi-project organization for competition and development
+
+**Framework Features:**
+- Event-driven command scheduling
+- Automatic command interruption on subsystem conflicts
+- Safety through `interrupted()` lifecycle method
+- Flexible binding API with method chaining
+- Compatible with PROS, LemLib, and LVGL
+
+**Remaining Work:**
+- [ ] Enable scheduler during autonomous routines
+- [ ] Implement command groups (parallel and sequential)
+- [ ] Add autonomous path integration with LemLib
+- [ ] Create default commands for all subsystems
+- [ ] Build comprehensive command library (drive, intake, lift, etc.)
+- [ ] Scheduler state management between auto/teleop transitions
+
+**Impact:**
+This framework provides a solid foundation that will:
+- Reduce code complexity in competition programs
+- Enable faster development of new robot features
+- Make onboarding new programmers easier
+- Allow code reuse across multiple robots
+- Improve code maintainability and debugging
+
+**[PHOTO NEEDED: Final architecture diagram showing complete system]**
+**[PHOTO NEEDED: Team photo with robot during framework testing]**
+
+---
+
+## Technical Reference
+
+**Framework Components:**
+
+| Component | Purpose | Key Files |
+|-----------|---------|-----------|
+| Scheduler | Manages command execution and lifecycle | `controller.h` |
+| CommandBase | Interface all commands implement | `commandBase.h` |
+| SubsystemBase | Interface all subsystems implement | `subsystemBase.h` |
+| ButtonBinder | Maps buttons to commands | `controller.h` |
+| JoystickBinder | Maps joystick movements to commands | `controller.h` |
+
+**Command Lifecycle:**
+1. **Schedule** - Command added to scheduler via button press or autonomous routine
+2. **Initialize** - `initialize()` called once when command starts
+3. **Execute Loop** - `execute()` called every 20ms while active
+4. **Finish Check** - `isFinished()` checked each cycle
+5. **End** - `end()` or `interrupted()` called when command completes
+
+**Dependencies:**
+- PROS 3.x (VEX V5 firmware)
+- LemLib (motion control and odometry)
+- LVGL (graphics and GUI)
+- fmt (string formatting)
+
+---

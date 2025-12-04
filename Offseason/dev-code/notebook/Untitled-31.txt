@@ -1,0 +1,434 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+10 files changed
+
+    1 contributor
+
+Commits on Oct 15, 2025
+
+    Refactor printing to use customPrint utility 
+
+@IanRohrbacher
+IanRohrbacher committed on Oct 15
+
+Showing
+with 71 additions and 39 deletions.
+2 changes: 2 additions & 0 deletions 2
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,3 +1,5 @@
+Find a way to test robotDisabled()
+
+## Note
+## Note
+### add into command:
+### add into command:
+- Command Groups:
+- Command Groups:
+2 changes: 1 addition & 1 deletion 2
+Offseason/example-code/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -12,7 +12,7 @@ class JoystickBinder;
+
+
+class Controller : public pros::Controller {
+class Controller : public pros::Controller {
+public:
+public:
+    Controller(pros::controller_id_e_t id, Scheduler* sch);
+    Controller(pros::controller_id_e_t id);
+    ButtonBinder A();
+    ButtonBinder A();
+    ButtonBinder B();
+    ButtonBinder B();
+    ButtonBinder X();
+    ButtonBinder X();
+30 changes: 30 additions & 0 deletions 30
+Offseason/example-code/include/custom/print.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,30 @@
+#ifndef CUSTOMPRINT_H_
+#define CUSTOMPRINT_H_
+
+#include <cstdarg>
+#include <cstdio>
+#include "api.h"
+
+namespace customPrint {
+// Print to console (serial / RTT)
+inline void printf(const char* fmt, ...) {
+    char buf[256];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    ::printf("%s", buf);
+}
+
+// Print to the V5 screen at a specific line
+inline void screenPrint(int line, const char* fmt, ...) {
+    char buf[128];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    pros::screen::print(pros::E_TEXT_MEDIUM, line, "%s", buf);
+}
+} // namespace customPrint
+
+#endif // CUSTOMPRINT_H_
+18 changes: 9 additions & 9 deletions 18
+Offseason/example-code/include/custom/subsystem/exampleSubsystem.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -23,15 +23,15 @@ class ExampleSubsystem : public SubsystemBase {
+        }
+        }
+
+
+        inline void forward() {
+        inline void forward() {
+            m_motor1.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+        }
+        }
+
+
+        inline void backward() {
+        inline void backward() {
+            m_motor1.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor1.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor2.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(-globalConst::MotorTools::percentToVelocity(100, globalConst::example::kMotorColor));
+            m_motor3.move_velocity(-globalConst::MotorTools::percentToVelocity(m_percent, globalConst::example::kMotorColor));
+        }
+        }
+
+
+        inline void stop() {
+        inline void stop() {
+@@ -53,9 +53,8 @@ class ExampleSubsystem : public SubsystemBase {
+        inline void periodic() override {
+        inline void periodic() override {
+            m_position = getPosition();
+            m_position = getPosition();
+
+
+            pros::screen::print(pros::E_TEXT_MEDIUM, 1, "Pulse Position: %d", m_position);
+            customPrint::screenPrint(1, "Pulse Position: %0.2f", m_position);
+
+            customPrint::printf("%0.2f\n", m_position);
+            printf("%d\n", m_position);
+        }
+        }
+
+
+
+
+@@ -64,6 +63,7 @@ class ExampleSubsystem : public SubsystemBase {
+        pros::Motor m_motor2;
+        pros::Motor m_motor2;
+        pros::Motor m_motor3;
+        pros::Motor m_motor3;
+        double m_position = 0;
+        double m_position = 0;
+        double m_percent = 100;
+
+
+};
+};
+
+
+7 changes: 4 additions & 3 deletions 7
+Offseason/example-code/include/custom/watchdog.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -4,6 +4,7 @@
+#include <vector>
+#include <vector>
+#include <string>
+#include <string>
+#include "pros/rtos.hpp"
+#include "pros/rtos.hpp"
+#include "custom/print.h"
+
+
+class Watchdog {
+class Watchdog {
+public:
+public:
+@@ -47,11 +48,11 @@ class Watchdog {
+
+
+    // Print performance summary (call when loop is slow)
+    // Print performance summary (call when loop is slow)
+    void printEpochs() {
+    void printEpochs() {
+        printf("[WATCHDOG] Performance Summary:\n");
+        customPrint::printf("[WATCHDOG] Performance Summary:\n");
+        for (const auto& epoch : m_epochs) {
+        for (const auto& epoch : m_epochs) {
+            printf("  %s: %dms\n", epoch.name.c_str(), epoch.duration);
+            customPrint::printf("  %s: %dms\n", epoch.name.c_str(), epoch.duration);
+        }
+        }
+        printf("  Total Loop: %dms\n", getTotalTime());
+        customPrint::printf("  Total Loop: %dms\n", getTotalTime());
+    }
+    }
+
+
+    // Get total loop time
+    // Get total loop time
+1 change: 1 addition & 0 deletions 1
+Offseason/example-code/include/main.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -43,6 +43,7 @@
+#include "custom/controller.h"
+#include "custom/controller.h"
+#include "custom/globals.h"
+#include "custom/globals.h"
+#include "custom/watchdog.h"
+#include "custom/watchdog.h"
+#include "custom/print.h"
+
+
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+4 changes: 2 additions & 2 deletions 4
+Offseason/example-code/src/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -7,8 +7,8 @@ Scheduler* Controller::m_globalScheduler = nullptr;
+std::vector<Controller*> Controller::m_pendingControllers;
+std::vector<Controller*> Controller::m_pendingControllers;
+
+
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+Controller::Controller(pros::controller_id_e_t id)
+    : pros::Controller(id), m_scheduler(sch) {
+    : pros::Controller(id) {
+    if (m_scheduler) {
+    if (m_scheduler) {
+        m_scheduler->registerController(this);
+        m_scheduler->registerController(this);
+    } else if (m_globalScheduler) {
+    } else if (m_globalScheduler) {
+32 changes: 15 additions & 17 deletions 32
+Offseason/example-code/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -8,37 +8,35 @@ extern void robotCompInit();
+extern void robotAuto();
+extern void robotAuto();
+extern void robotTeleop();
+extern void robotTeleop();
+
+
+const static uint32_t kMinLoopMs = 20;
+
+void run_helper(bool robotState, void (*funcState)(), std::string name="") {
+void run_helper(bool robotState, void (*funcState)(), std::string name="") {
+    std::string functionName = typeid(funcState).name();
+    std::string functionName = typeid(funcState).name();
+    Scheduler::getInstance().setRobotEnabled(robotState);
+    Scheduler::getInstance().setRobotEnabled(robotState);
+    Scheduler::getInstance().cancelAll();
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+
+
+    while (true) {
+    while (true) {
+        watchdog.reset();
+        // Mark the start of this iteration
+        static uint32_t lastTick = pros::millis();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t iterationStart = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = iterationStart;
+        lastTick = currentTick;
+        watchdog.addEpoch("start ["+functionName+"]");
+
+        funcState();
+
+
+        watchdog.addEpoch("pre-scheduler ["+functionName+"]");
+        funcState();
+        Scheduler::getInstance().run();
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler ["+functionName+"]");
+
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        // Enforce minimum loop time (20 ms). If work took less than 20ms,
+        pros::delay(20);
+        // sleep the remainder. Otherwise continue immediately.
+        uint32_t elapsed = pros::millis() - iterationStart;
+        if (elapsed < kMinLoopMs) {
+            pros::delay(kMinLoopMs - elapsed);
+        }
+
+
+        // testing \/ \/ \/
+        // testing \/ \/ \/
+        char buffer[64];
+        char buffer[64];
+        snprintf(buffer, sizeof(buffer), "[%s] delta time: %lu", !name.empty() ? name.c_str() : functionName.c_str(), static_cast<unsigned long>(deltaTime));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, buffer);
+        // Print command name and number of commands in scheduler
+        // Print command name and number of commands in scheduler
+        size_t commandCount = Scheduler::getInstance().size();
+        size_t commandCount = Scheduler::getInstance().size();
+        snprintf(buffer, sizeof(buffer), "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+        customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, buffer);
+        customPrint::screenPrint(8, "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
+
+        // testing ^ ^ ^
+        // testing ^ ^ ^
+    }
+    }
+}
+}
+6 changes: 3 additions & 3 deletions 6
+Offseason/example-code/src/robot.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,6 +1,6 @@
+#include "main.h"
+#include "main.h"
+
+
+extern Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+extern Controller controller(globalConst::drive::kMainControllerID);
+
+
+// Add Subsystems Here
+// Add Subsystems Here
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+@@ -26,7 +26,7 @@ std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalComm
+    [](){ exampleSub->forward(); },     // initialize
+    [](){ exampleSub->forward(); },     // initialize
+    [](){ /* execute logic */ },        // execute  
+    [](){ /* execute logic */ },        // execute  
+    [](bool interrupted){ 
+    [](bool interrupted){ 
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "interrupted type: %s", interrupted ? "true" : "false");
+        customPrint::screenPrint(8, "interrupted type: %s", interrupted ? "true" : "false");
+        exampleSub->stop(); 
+        exampleSub->stop(); 
+    }, // end
+    }, // end
+    [](){ return false; },              // isFinished
+    [](){ return false; },              // isFinished
+@@ -68,7 +68,7 @@ void robotInit() {
+}
+}
+
+
+void robotDisabled() {
+void robotDisabled() {
+    for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+    for(int i=1; i<=13; i++) customPrint::screenPrint(i, "--------DISABLED--------");
+}
+}
+
+
+void robotCompInit() {}
+void robotCompInit() {}
+8 changes: 4 additions & 4 deletions 8
+Offseason/example-code/src/scheduler.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -241,7 +241,7 @@ void Scheduler::onCommandInterrupt(std::function<void(CommandBase*)> action) {
+void robotInit() {
+void robotInit() {
+    // Log when commands start
+    // Log when commands start
+    Scheduler::getInstance().onCommandInitialize([](CommandBase* cmd) {
+    Scheduler::getInstance().onCommandInitialize([](CommandBase* cmd) {
+        printf("[SCHEDULER] Command initialized: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command initialized: %s\n", cmd->getName().c_str());
+    });
+    });
+    
+    
+    // Log when commands are executing (called every 20ms while running)
+    // Log when commands are executing (called every 20ms while running)
+@@ -252,12 +252,12 @@ void robotInit() {
+    
+    
+    // Log when commands finish successfully
+    // Log when commands finish successfully
+    Scheduler::getInstance().onCommandFinish([](CommandBase* cmd) {
+    Scheduler::getInstance().onCommandFinish([](CommandBase* cmd) {
+        printf("[SCHEDULER] Command finished: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command finished: %s\n", cmd->getName().c_str());
+    });
+    });
+    
+    
+    // Log when commands are interrupted/canceled
+    // Log when commands are interrupted/canceled
+    Scheduler::getInstance().onCommandInterrupt([](CommandBase* cmd) {
+    Scheduler::getInstance().onCommandInterrupt([](CommandBase* cmd) {
+        printf("[SCHEDULER] Command interrupted: %s\n", cmd->getName().c_str());
+        customPrint::printf("[SCHEDULER] Command interrupted: %s\n", cmd->getName().c_str());
+    });
+    });
+    
+    
+    // Example: Update dashboard when commands change state
+    // Example: Update dashboard when commands change state
+@@ -412,7 +412,7 @@ void Scheduler::run() {
+
+
+    // Check for performance issues and warn if loop is slow
+    // Check for performance issues and warn if loop is slow
+    if (m_watchdog.hasSlowEpochs()) {
+    if (m_watchdog.hasSlowEpochs()) {
+        printf("[SCHEDULER] WARNING: Slow loop detected!\n");
+        customPrint::printf("[SCHEDULER] WARNING: Slow loop detected!\n");
+        m_watchdog.printEpochs();
+        m_watchdog.printEpochs();
+    }
+    }
+
+
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

@@ -1,0 +1,197 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2024-2025
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Jun 24
+changed the order of onTrue/False
+main
+
+1 parent 
+fef0d07
+ commit 91ec246
+
+File tree
+
+Test2025/command_test
+
+include/custom
+
+    controller.h
+
+src
+
+            main.cpp
+
+2 files changed
++48
+-26
+lines changed
+ 
+‎Test2025/command_test/include/custom/controller.h‎
++40-18Lines changed: 40 additions & 18 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -27,9 +27,9 @@ class Controller : public pros::Controller {
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone())); 
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone())); 
+    }
+    }
+
+
+    inline ButtonBinder& setButtonCommand(pros::controller_digital_e_t button, const CommandBase* cmd);
+    inline ButtonBinder setButtonCommand();
+
+
+    inline JoystickBinder& setJoystickCommand(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd);
+    inline JoystickBinder setJoystickCommand();
+
+
+    inline void poll();
+    inline void poll();
+
+
+@@ -44,11 +44,22 @@ class Controller : public pros::Controller {
+class ButtonBinder {
+class ButtonBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling };
+    enum class Edge { None, Rising, Falling };
+    ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn, const CommandBase* cmd)
+    ButtonBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None) {}
+        : controller(ctrl), button(btn), command(cmd), edge(Edge::None) {}
+    ButtonBinder& onTrue(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    ButtonBinder& onTrue()    { edge = Edge::Rising;  return *this; }
+        button = btn;
+    ButtonBinder& onFalse()   { edge = Edge::Falling; return *this; }
+        command = cmd;
+        edge = Edge::Rising;
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        command = cmd;
+        edge = Edge::Falling;
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+    }
+
+
+    void poll() {
+    void poll() {
+        if (edge == Edge::Rising)  { bool curr = controller->get_digital_new_press(button);    if (curr) controller->addCommand(command); }
+        if (edge == Edge::Rising)  { bool curr = controller->get_digital_new_press(button);    if (curr) controller->addCommand(command); }
+@@ -65,11 +76,24 @@ class ButtonBinder {
+class JoystickBinder {
+class JoystickBinder {
+public:
+public:
+    enum class Edge { None, Rising, Falling };
+    enum class Edge { None, Rising, Falling };
+    JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd)
+    JoystickBinder(Controller* ctrl) : controller(ctrl), edge(Edge::None), prev(false) {}
+        : controller(ctrl), stick(stick), threshold(threshold), command(cmd), prev(false), edge(Edge::None) {}
+    JoystickBinder& onTrue(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+    JoystickBinder& onTrue()  { edge = Edge::Rising;  return *this; }
+        this->stick = stick;
+    JoystickBinder& onFalse() { edge = Edge::Falling; return *this; }
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::Rising;
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+    JoystickBinder& onFalse(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+        this->stick = stick;
+        this->threshold = threshold;
+        this->command = cmd;
+        edge = Edge::Falling;
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+    }
+
+
+    void poll() {
+    void poll() {
+        int curr = controller->get_analog(stick);
+        int curr = controller->get_analog(stick);
+@@ -88,14 +112,12 @@ class JoystickBinder {
+    Edge edge;
+    Edge edge;
+};
+};
+
+
+inline ButtonBinder& Controller::setButtonCommand(pros::controller_digital_e_t button, const CommandBase* cmd) {
+inline ButtonBinder Controller::setButtonCommand() {
+    buttonBinders.emplace_back(this, button, cmd);
+    return ButtonBinder(this);
+    return buttonBinders.back();
+}
+}
+
+
+inline JoystickBinder& Controller::setJoystickCommand(pros::controller_analog_e_t stick, int threshold, const CommandBase* cmd) {
+inline JoystickBinder Controller::setJoystickCommand() {
+    joystickBinders.emplace_back(this, stick, threshold, cmd);
+    return JoystickBinder(this);
+    return joystickBinders.back();
+}
+}
+
+
+inline void Controller::poll() {
+inline void Controller::poll() {
+‎Test2025/command_test/src/main.cpp‎
++8-8Lines changed: 8 additions & 8 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -11,14 +11,14 @@ ControllerScreenSubsystem* screenSub = new ControllerScreenSubsystem(&controller
+
+
+// Add Any Button Bindings Here
+// Add Any Button Bindings Here
+void configureBindings() {
+void configureBindings() {
+    controller.setButtonCommand(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub)).onTrue();
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub));
+    controller.setButtonCommand(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub)).onTrue();
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub));
+    controller.setButtonCommand(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub)).onTrue();
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub));
+    controller.setButtonCommand(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub)).onFalse();
+    controller.setButtonCommand().onFalse(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub));
+    controller.setJoystickCommand(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); })).onTrue();
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); }));
+    controller.setJoystickCommand(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); })).onTrue();
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); }));
+    controller.setJoystickCommand(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->stop(); })).onFalse();
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->stop(); }));
+    controller.setJoystickCommand(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->stop(); })).onFalse();
+    controller.setJoystickCommand().onFalse(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->stop(); }));
+}
+}
+
+
+/**
+/**
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.
+changed the order of onTrue/False · KSUBlackSquirrel/VexU-Code-2024-2025@91ec246

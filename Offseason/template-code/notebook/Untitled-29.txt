@@ -1,0 +1,473 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+5 files changed
+
+    1 contributor
+
+Commits on Oct 14, 2025
+
+    Refactor robot logic and improve controller registration 
+
+@IanRohrbacher
+IanRohrbacher committed on Oct 14
+
+Showing
+with 161 additions and 116 deletions.
+3 changes: 2 additions & 1 deletion 3
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -81,4 +81,5 @@ hasSlowEpochs() *added*
+
+
+### continue working on:
+### continue working on:
+- example commands
+- example commands
+- drive command
+- drive command
+- comments for all functions with examples
+6 changes: 6 additions & 0 deletions 6
+Offseason/example-code/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -32,10 +32,16 @@ class Controller : public pros::Controller {
+    JoystickBinder RightJoyX(int threshold);
+    JoystickBinder RightJoyX(int threshold);
+
+
+    void poll();
+    void poll();
+    static void setScheduler(Scheduler* sch);
+
+
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    Scheduler* m_scheduler;
+    Scheduler* m_scheduler;
+
+private:
+    static Scheduler* m_globalScheduler;
+    static std::vector<Controller*> m_pendingControllers;
+    static void registerPendingControllers();
+};
+};
+
+
+enum class Edge { None, Rising, Falling, WhileTrue };
+enum class Edge { None, Rising, Falling, WhileTrue };
+33 changes: 31 additions & 2 deletions 33
+Offseason/example-code/src/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,9 +1,38 @@
+#include "main.h"
+#include "main.h"
+#include "custom/scheduler.h"
+#include <vector>
+
+
+// Static members for backup registration
+Scheduler* Controller::m_globalScheduler = nullptr;
+std::vector<Controller*> Controller::m_pendingControllers;
+
+
+// Controller constructor: initializes the controller and binds it to a scheduler.
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+    : pros::Controller(id), m_scheduler(sch) {}
+    : pros::Controller(id), m_scheduler(sch) {
+    if (m_scheduler) {
+        m_scheduler->registerController(this);
+    } else if (m_globalScheduler) {
+        m_globalScheduler->registerController(this);
+    } else {
+        m_pendingControllers.push_back(this);
+    }
+}
+
+// Set the global scheduler reference for auto-registration
+void Controller::setScheduler(Scheduler* sch) {
+    m_globalScheduler = sch;
+    registerPendingControllers();
+}
+
+// Register any controllers created before scheduler was set
+void Controller::registerPendingControllers() {
+    if (m_globalScheduler) {
+        for (Controller* ctrl : m_pendingControllers) {
+            m_globalScheduler->registerController(ctrl);
+        }
+        m_pendingControllers.clear();
+    }
+}
+
+
+// Create a new ButtonBinder for every available button on this controller
+// Create a new ButtonBinder for every available button on this controller
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+155 changes: 42 additions & 113 deletions 155
+Offseason/example-code/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,59 +1,43 @@
+#include "main.h"
+#include "main.h"
+
+
+Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+// Forward declarations for robot functions
+
+extern void configureBindings();
+// Add Subsystems Here
+extern void robotInit();
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+extern void robotDisabled();
+
+extern void robotCompInit();
+// Example factory calls for CommandBase using ExampleSubsystem
+extern void robotAuto();
+std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
+extern void robotTeleop();
+std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+void run_helper(bool robotState, void (*funcState)()) {
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+    std::string functionName = typeid(funcState).name();
+
+    Scheduler::getInstance().setRobotEnabled(robotState);
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+    Scheduler::getInstance().cancelAll();
+
+    Watchdog watchdog;
+// Default commands
+// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+
+// Example command variations
+// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+// std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
+// std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
+// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+//     [](){ exampleSub->forward(); },     // initialize
+//     [](){ /* execute logic */ },        // execute  
+//     [](bool interrupted){ exampleSub->stop(); }, // end
+//     [](){ return false; },              // isFinished
+//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
+//     "Functional"                         // name
+// );
+// std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
+
+
+
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start ["+functionName+"]");
+
+        funcState();
+
+
+// Add Any Button Bindings Here
+        watchdog.addEpoch("pre-scheduler ["+functionName+"]");
+void configureBindings() {
+        Scheduler::getInstance().run();
+    // Basic InstantCommands
+        watchdog.addEpoch("post-scheduler ["+functionName+"]");
+    // controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+        pros::delay(20);
+
+
+    // // Original Pulse command
+        // testing \/ \/ \/
+    // controller.X().onTrue(pulseCommand.get());
+        char buffer[64];
+
+        snprintf(buffer, sizeof(buffer), "pre-scheduler [%s]: %lu", functionName.c_str(), static_cast<unsigned long>(deltaTime));
+    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, buffer);
+    // controller.A().onTrue(timeoutCommand.get());
+        // testing ^ ^ ^
+
+    }
+    // // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
+    // controller.B().onTrue(waitCommand.get());
+
+    // // FunctionalCommand - Custom command built with lambdas
+    // controller.DOWN().onTrue(functionalCommand.get());
+}
+}
+
+
+
+/**
+/**
+ * This function runs once when the program starts. It sets up all controller bindings
+ * This function runs once when the program starts. It sets up all controller bindings
+ * and registers the controller with the scheduler. This is where you configure your
+ * and registers the controller with the scheduler. This is where you configure your
+@@ -67,14 +51,15 @@ void configureBindings() {
+ * Keep this function fast—long operations here will block competition modes.
+ * Keep this function fast—long operations here will block competition modes.
+ */
+ */
+void initialize() {
+void initialize() {
+    // DO NOT Modify the code below
+    SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    Controller::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().enable();
+    Scheduler::getInstance().enable();
+
+    configureBindings();
+    configureBindings();
+    Scheduler::getInstance().registerController(&controller);
+
+    // Add New Code Below
+    robotInit();
+    // exampleSub->setDefaultCommand(holdCommand.get());
+}
+}
+
+
+/**
+/**
+@@ -83,23 +68,7 @@ void initialize() {
+ * the robot is enabled, this task will exit.
+ * the robot is enabled, this task will exit.
+ */
+ */
+void disabled() { 
+void disabled() { 
+    Scheduler::getInstance().setRobotEnabled(false);
+    run_helper(false, robotDisabled);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start");
+        for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+        watchdog.addEpoch("pre-scheduler");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+}
+}
+
+
+/**
+/**
+@@ -112,8 +81,7 @@ void disabled() {
+ * starts.
+ * starts.
+ */
+ */
+void competition_initialize() {
+void competition_initialize() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    run_helper(true, robotCompInit);
+    Scheduler::getInstance().cancelAll();
+}
+}
+
+
+/**
+/**
+@@ -128,21 +96,7 @@ void competition_initialize() {
+ * from where it left off.
+ * from where it left off.
+ */
+ */
+void autonomous() {
+void autonomous() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    run_helper(true, robotAuto);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+}
+}
+
+
+/**
+/**
+@@ -159,30 +113,5 @@ void autonomous() {
+ * task, not resume it from where it left off.
+ * task, not resume it from where it left off.
+ */
+ */
+void opcontrol() {
+void opcontrol() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    run_helper(true, robotTeleop);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
+        // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+        // // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %d", static_cast<int>(cancelIncomingCommand.get()->getInterruptionBehavior()));
+        // // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %d", static_cast<int>(ignoringDisableCommand.get()->getInterruptionBehavior()));
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);
+        watchdog.addEpoch("pre-scheduler");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+};
+};
+80 changes: 80 additions & 0 deletions 80
+Offseason/example-code/src/robot.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,80 @@
+#include "main.h"
+
+extern Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+
+// Add Subsystems Here
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+
+// Example factory calls for CommandBase using ExampleSubsystem
+std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+
+// Default commands
+// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+
+// Example command variations
+// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+// std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
+// std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
+// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+//     [](){ exampleSub->forward(); },     // initialize
+//     [](){ /* execute logic */ },        // execute  
+//     [](bool interrupted){ exampleSub->stop(); }, // end
+//     [](){ return false; },              // isFinished
+//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
+//     "Functional"                         // name
+// );
+// std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
+
+
+
+// Add Any Button Bindings Here
+void configureBindings() {
+    // Basic InstantCommands
+    // controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
+    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+
+    // // Original Pulse command
+    // controller.X().onTrue(pulseCommand.get());
+
+    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
+    // controller.A().onTrue(timeoutCommand.get());
+
+    // // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
+    // controller.B().onTrue(waitCommand.get());
+
+    // // FunctionalCommand - Custom command built with lambdas
+    // controller.DOWN().onTrue(functionalCommand.get());
+}
+
+
+
+void robotInit() {
+    // exampleSub->setDefaultCommand(holdCommand.get());
+}
+
+void robotDisabled() {
+    for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+}
+
+void robotCompInit() {}
+
+void robotAuto() {}
+
+void robotTeleop() {
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
+    // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+    // // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %d", static_cast<int>(cancelIncomingCommand.get()->getInterruptionBehavior()));
+    // // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %d", static_cast<int>(ignoringDisableCommand.get()->getInterruptionBehavior()));
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+    // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+}
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

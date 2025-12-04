@@ -1,0 +1,373 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2024-2025
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Jul 15
+added interrupt
+whenever you use addRequirements in a command for subsystems it will cancel other command using that subsystem
+main
+
+1 parent 
+91ec246
+ commit 5100ff7
+
+File tree
+
+Test2025/command_test/include
+
+custom
+
+command
+
+commandBase.h
+down.h
+instantCommand.h
+myTime.h
+pulse.h
+
+    up.h
+
+    controller.h
+
+        main.h
+
+8 files changed
++92
+-9
+lines changed
+ 
+‎Test2025/command_test/include/custom/command/commandBase.h‎
++19Lines changed: 19 additions & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -2,6 +2,9 @@
+#define COMMANDBASE_H_
+#define COMMANDBASE_H_
+
+
+#include "custom/globals.h"
+#include "custom/globals.h"
+#include <vector>
+class SubsystemBase;
+
+
+class CommandBase {
+class CommandBase {
+public:
+public:
+@@ -10,10 +13,26 @@ class CommandBase {
+    virtual void execute() = 0;
+    virtual void execute() = 0;
+    virtual void end() = 0;
+    virtual void end() = 0;
+    virtual bool isFinished() = 0;
+    virtual bool isFinished() = 0;
+    virtual void interrupted() {}
+
+
+    virtual void periodic() {}
+    virtual void periodic() {}
+
+
+    virtual CommandBase* clone() const = 0;
+    virtual CommandBase* clone() const = 0;
+    
+    // Add a subsystem requirement - this will interrupt any commands using the same subsystem
+    inline void addRequirements(SubsystemBase* subsystem) {
+        if (subsystem != nullptr) {
+            requiredSubsystems.push_back(subsystem);
+        }
+    }
+    
+    // Get all required subsystems - non-virtual to prevent overriding
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+        return requiredSubsystems;
+    }
+private:
+    std::vector<SubsystemBase*> requiredSubsystems;
+};
+};
+
+
+#endif
+#endif
+‎Test2025/command_test/include/custom/command/down.h‎
++8-1Lines changed: 8 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,7 +6,10 @@
+
+
+class Down : public CommandBase {
+class Down : public CommandBase {
+public:
+public:
+    Down(MotorSubsystem* sub) : CommandBase() { subsystem = sub; }
+    Down(MotorSubsystem* sub) : CommandBase() { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        subsystem->backward();
+        subsystem->backward();
+@@ -16,6 +19,10 @@ class Down : public CommandBase {
+        subsystem->stop();
+        subsystem->stop();
+    }
+    }
+
+
+    inline void interrupted() override {
+        subsystem->stop();
+    }
+    inline bool isFinished() override {
+    inline bool isFinished() override {
+        return subsystem->getPosition() <= 0.0;
+        return subsystem->getPosition() <= 0.0;
+    }
+    }
+‎Test2025/command_test/include/custom/command/instantCommand.h‎
++11-2Lines changed: 11 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,15 +6,24 @@
+
+
+class InstantCommand : public CommandBase  {
+class InstantCommand : public CommandBase  {
+public:
+public:
+    InstantCommand(std::function<void()> func) : action(func) {}
+    InstantCommand(std::function<void()> func, SubsystemBase* subsystem = nullptr) : action(func) {
+        if (subsystem) addRequirements(subsystem);
+    }
+
+
+    inline void execute() override { if (action) action(); }
+    inline void execute() override { if (action) action(); }
+
+
+    inline bool isFinished() override { return true; }
+    inline bool isFinished() override { return true; }
+
+
+    inline void end() override {}
+    inline void end() override {}
+
+
+    inline CommandBase* clone() const override { return new InstantCommand(action); }
+    inline CommandBase* clone() const override { 
+        auto clone = new InstantCommand(action);
+        // Copy requirements from original command
+        for (auto* subsystem : getRequiredSubsystems()) {
+            clone->addRequirements(subsystem);
+        }
+        return clone;
+    }
+
+
+private:
+private:
+    std::function<void()> action;
+    std::function<void()> action;
+‎Test2025/command_test/include/custom/command/myTime.h‎
++5-1Lines changed: 5 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,7 +6,10 @@
+
+
+class MyTime : public CommandBase {
+class MyTime : public CommandBase {
+public:
+public:
+    MyTime(ControllerScreenSubsystem* sub) { subsystem = sub; }
+    MyTime(ControllerScreenSubsystem* sub) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        subsystem->tick();
+        subsystem->tick();
+@@ -23,6 +26,7 @@ class MyTime : public CommandBase {
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new MyTime(*this);
+        return new MyTime(*this);
+    }
+    }
+private:
+private:
+    ControllerScreenSubsystem* subsystem;
+    ControllerScreenSubsystem* subsystem;
+};
+};
+‎Test2025/command_test/include/custom/command/pulse.h‎
++8-1Lines changed: 8 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,7 +6,10 @@
+
+
+class Pulse : public CommandBase {
+class Pulse : public CommandBase {
+public:
+public:
+    Pulse(MotorSubsystem* sub) { subsystem = sub; }
+    Pulse(MotorSubsystem* sub) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        if (subsystem->getPosition() >= 150.0) {
+        if (subsystem->getPosition() >= 150.0) {
+@@ -20,6 +23,10 @@ class Pulse : public CommandBase {
+        subsystem->stop();
+        subsystem->stop();
+    }
+    }
+
+
+    inline void interrupted() override {
+        subsystem->stop();
+    }
+    inline bool isFinished() override {
+    inline bool isFinished() override {
+        return false;
+        return false;
+    }
+    }
+‎Test2025/command_test/include/custom/command/up.h‎
++8-1Lines changed: 8 additions & 1 deletion
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,7 +6,10 @@
+
+
+class Up : public CommandBase {
+class Up : public CommandBase {
+public:
+public:
+    Up(MotorSubsystem* sub) { subsystem = sub; }
+    Up(MotorSubsystem* sub) { 
+        subsystem = sub; 
+        addRequirements(subsystem);
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        subsystem->forward();
+        subsystem->forward();
+@@ -16,6 +19,10 @@ class Up : public CommandBase {
+        subsystem->stop();
+        subsystem->stop();
+    }
+    }
+
+
+    inline void interrupted() override {
+        subsystem->stop();
+    }
+    inline bool isFinished() override {
+    inline bool isFinished() override {
+        return subsystem->getPosition() >= 150.0;
+        return subsystem->getPosition() >= 150.0;
+    }
+    }
+‎Test2025/command_test/include/custom/controller.h‎
++29-3Lines changed: 29 additions & 3 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -19,11 +19,37 @@ class Controller : public pros::Controller {
+    }
+    }
+
+
+    inline void addCommand(const CommandBase* cmd) { 
+    inline void addCommand(const CommandBase* cmd) { 
+        for (const auto& existing : *scheduler) {
+        // Get all required subsystems for the new command
+            if (typeid(*existing) == typeid(*cmd)) {
+        const auto& newSubsystems = cmd->getRequiredSubsystems();
+                return;
+        
+        if (!newSubsystems.empty()) {
+            // Check for existing commands using any of the same subsystems
+            for (auto it = scheduler->begin(); it != scheduler->end(); ) {
+                const auto& existingSubsystems = (*it)->getRequiredSubsystems();
+                bool conflict = false;
+                
+                // Check if there's any overlap in subsystems
+                for (SubsystemBase* newSub : newSubsystems) {
+                    for (SubsystemBase* existingSub : existingSubsystems) {
+                        if (newSub == existingSub) {
+                            conflict = true;
+                            break;
+                        }
+                    }
+                    if (conflict) break;
+                }
+                
+                if (conflict) {
+                    // Found conflict - interrupt the existing command
+                    (*it)->interrupted();
+                    it = scheduler->erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            }
+        }
+        }
+        
+        // Add the new command
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone())); 
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone())); 
+    }
+    }
+
+
+‎Test2025/command_test/include/main.h‎
++4Lines changed: 4 additions & 0 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -46,6 +46,10 @@
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/instantCommand.h"
+#include "custom/command/instantCommand.h"
+#include "custom/command/up.h"
+#include "custom/command/down.h"
+#include "custom/command/pulse.h"
+#include "custom/command/myTime.h"
+#include "custom/controller.h"
+#include "custom/controller.h"
+#include "custom/subsystem/motorSubsystem.h"
+#include "custom/subsystem/motorSubsystem.h"
+#include "custom/subsystem/controllerScreenSubsystem.h"
+#include "custom/subsystem/controllerScreenSubsystem.h"
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.
+added interrupt · KSUBlackSquirrel/VexU-Code-2024-2025@5100ff7

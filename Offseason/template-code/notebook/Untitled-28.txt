@@ -1,0 +1,2070 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+Rebase branch to latest commit in main #1
+Ian did some stuff
+
+4 commits
+18 files changed
+
+    1 contributor
+
+Commits on Oct 7, 2025
+
+    running, adding test statments
+    @IanRohrbacher
+    IanRohrbacher committed on Oct 7
+
+Commits on Oct 8, 2025
+
+    Add test statements
+    @IanRohrbacher
+    IanRohrbacher committed on Oct 8
+
+most tests are complete
+@IanRohrbacher
+IanRohrbacher committed on Oct 8
+
+Commits on Oct 14, 2025
+
+    Integrate Watchdog monitoring and add command factory examples
+    @IanRohrbacher
+    IanRohrbacher committed on Oct 14
+
+Showing
+with 1,328 additions and 416 deletions.
+94 changes: 80 additions & 14 deletions 94
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,18 +1,84 @@
+change how the main loop waits
+## Note
+### add into command:
+- Command Groups:
+    - SequentialCommandGroup
+    - ParallelCommandGroup
+
+
+work on default command function
+- Command Decorators:
+    - andThen(CommandBase* next);
+
+
+work on drive command
+## Needs Testing
+### command class:
+- getName() opcontrol [DONE]
+- getInterruptionBehavior() [DONE]
+- ignoringDisable() *added test first*
+- setComposed()/isComposed() AFTER andThen() is created
+- addRequirements() [DONE]
+- getRequiredSubsystems() [DONE]
+- DECORATORS [DONE]
+    - TimeoutCommand() [DONE]
+    - NamedCommand() [DONE]
+    - WaitCommand() [DONE]
+    - RunForCommand() [DONE]
+    - FunctionalCommand() [DONE]
+    - InstantCommand() [DONE]
+- commands taking many subsystems [DONE]
+    - InstantCommand [DONE]
+    - FunctionalCommand [DONE]
+
+
+Add Command Groups:
+class SequentialCommandGroup : public CommandBase {
+    // Run commands one after another
+};
+class ParallelCommandGroup : public CommandBase {
+    // Run commands simultaneously
+};
+
+
+Add Command Decorators:
+### subsystem class:
+CommandBase* withTimeout(double seconds);
+- setDefaultCommand() [DONE]
+CommandBase* repeatedly();
+- getCurrentCommand() [DONE]
+CommandBase* andThen(CommandBase* next);
+- setScheduler() [DONE]
+- registerPendingSubsystems() [DONE]
+- FACTORY METHODS *added test second*
+    - runOnce() *added*
+    - run() *added*
+    - runUntil() *added*
+    - runFor() *added*
+
+
+### scheduler:
+- setDefaultCommand() [DONE]
+- cancel() [DONE]
+- cancelAll() *added test first*
+- enable() [DONE]
+- disable() [DONE]
+- isEnabled() [DONE]
+- isScheduled() [DONE]
+- requiring() [DONE]
+- Command event callbacks [DONE]
+    - onCommandInitialize() [DONE]
+    - onCommandExecute() [DONE]
+    - onCommandFinish() [DONE]
+    - onCommandInterrupt() [DONE]
+- setRobotEnabled() [DONE]
+- isRobotEnabled() [DONE]
+- run() [DONE]
+    - initCommand() [DONE]
+    - interruptCommand() [DONE]
+    - finishCommand() [DONE]
+    - requirementsFree() [DONE]
+    - areCommandsInterruptible() [DONE]
+
+
+### verify all watchdog functions
+addEpoch() *added*
+reset() *added*
+printEpochs() *added*
+getTotalTime() *added*
+hasSlowEpochs() *added*
+
+
+## Continue
+### map out vex control functions with Scheduler
+- opcontrol()
+- initialize()
+- disabled()
+- autonomous()
+
+
+### continue working on:
+- example commands
+- drive command
+345 changes: 323 additions & 22 deletions 345
+Offseason/example-code/include/custom/command/commandBase.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,45 +1,346 @@
+// CommandBase.h
+// CommandBase.h
+// Abstract base class for all commands in the scheduler system.
+// Commands encapsulate actions and can require or use subsystems.
+#ifndef COMMANDBASE_H_
+#ifndef COMMANDBASE_H_
+#define COMMANDBASE_H_
+#define COMMANDBASE_H_
+
+
+#include "custom/globals.h"
+#include "custom/globals.h"
+#include "pros/rtos.hpp"
+#include <vector>
+#include <vector>
+#include <string>
+#include <memory>
+#include <functional>
+#include <typeinfo>
+#include <cstdlib>
+#include <initializer_list>
+#ifdef __GNUG__
+    #include <cxxabi.h>
+#endif // __GNUG__
+
+
+class SubsystemBase;
+class SubsystemBase;
+
+
+class TimeoutCommand;
+class NamedCommand;
+class WaitCommand;
+class StartEndCommand;
+class FunctionalCommand;
+class InstantCommand;
+
+// Interruption behavior enum
+enum class InterruptionBehavior {
+    kCancelSelf,        // This command will be canceled when interrupted
+    kCancelIncoming     // Incoming commands will be canceled instead of this one
+};
+
+// CommandBase: interface for all commands that can be scheduled and executed
+// CommandBase: interface for all commands that can be scheduled and executed
+class CommandBase {
+class CommandBase {
+public:
+private:
+    CommandBase() {}
+    std::vector<SubsystemBase*> m_requiredSubsystems;  // Subsystems required for this command
+    InterruptionBehavior m_interruptionBehavior;
+    bool m_runsWhenDisabled;
+    bool m_isComposed = false;
+
+
+    // Called every tick while the command is scheduled
+public:
+    virtual void execute() = 0;
+    CommandBase() :
+    // Called when the command ends (naturally or interrupted)
+        m_interruptionBehavior(InterruptionBehavior::kCancelSelf),
+    virtual void end() = 0;
+        m_runsWhenDisabled(false),
+    // Returns true if the command is finished and should be removed
+        m_isComposed(false)
+    {}
+
+    // ========================================================================
+    // LIFECYCLE METHODS
+    // ========================================================================
+
+    virtual void initialize() {};
+    virtual void execute() {};
+    virtual void end(bool interrupted) {};
+    virtual bool isFinished() = 0;
+    virtual bool isFinished() = 0;
+    // Called if the command is interrupted by another command requiring the same subsystem
+    virtual void interrupted() { end(); };
+
+    // Clone the command (used for scheduling new instances)
+    virtual CommandBase* clone() const = 0;
+    virtual CommandBase* clone() const = 0;
+
+    // ========================================================================
+    // COMMAND FUNCTIONS
+    // ========================================================================
+
+    // Command properties
+    virtual std::string getName() const {
+        const char* typeName = typeid(*this).name();
+        #ifdef __GNUG__
+            int status = 0;
+            char* demangled = abi::__cxa_demangle(typeName, 0, 0, &status);
+            if (status == 0 && demangled) {
+                std::string result(demangled);
+                free(demangled);
+                return result;
+            }
+        #endif
+        std::string name(typeName);
+        size_t classPos = name.find("class ");
+        if (classPos != std::string::npos) {
+            name = name.substr(classPos + 6);
+        }
+        size_t templatePos = name.find('<');
+        if (templatePos != std::string::npos) {
+            name = name.substr(0, templatePos);
+        }
+        return name.empty() ? "UnknownCommand" : name;
+    }
+
+    // subsystem behavior
+    inline void addRequirements(SubsystemBase* subsystem) { if (subsystem != nullptr) m_requiredSubsystems.push_back(subsystem); }
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const { return m_requiredSubsystems; }
+
+    // Interruption behavior
+    void setInterruptible(bool interruptible) { m_interruptionBehavior = interruptible ? InterruptionBehavior::kCancelSelf : InterruptionBehavior::kCancelIncoming; }
+    InterruptionBehavior getInterruptionBehavior() const { return m_interruptionBehavior; }
+
+    // Robot state behavior
+    void setRunsWhenDisabled(bool runsWhenDisabled) { m_runsWhenDisabled = runsWhenDisabled; }
+    bool runsWhenDisabled() const { return m_runsWhenDisabled; }
+
+    // Composition detection
+    void setComposed(bool composed) { m_isComposed = composed; }
+    bool isComposed() const { return m_isComposed; }
+
+    // ========================================================================
+    // COMMAND DECORATORS
+    // ========================================================================
+
+    // Defined later at bottom of code
+    std::unique_ptr<CommandBase> withTimeout(double timeoutSeconds);
+    std::unique_ptr<CommandBase> withName(const std::string& name);
+
+    std::unique_ptr<CommandBase> withInterruptBehavior(InterruptionBehavior behavior) {
+        auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
+        clonedCommand->m_interruptionBehavior = behavior;
+        return clonedCommand;
+    }
+
+    std::unique_ptr<CommandBase> ignoringDisable(bool shouldIgnoreDisable = true) {
+        auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
+        clonedCommand->setRunsWhenDisabled(shouldIgnoreDisable);
+        return clonedCommand;
+    }
+};
+
+// ============================================================================
+// COMMAND UTILITY CLASSES
+// ============================================================================
+
+// Wrapper command that adds a timeout to any command
+class TimeoutCommand : public CommandBase {
+private:
+    std::unique_ptr<CommandBase> m_command;
+    double m_timeout;
+    double m_startTime;
+
+public:
+    TimeoutCommand(
+        std::unique_ptr<CommandBase> command,
+        double timeout
+    ) :
+        m_command(std::move(command)),
+        m_timeout(timeout),
+        m_startTime(0)
+    { for (auto* subsystem : m_command->getRequiredSubsystems()) addRequirements(subsystem); } // Copy requirements from wrapped command
+
+    void initialize() override {
+        m_startTime = pros::millis();
+        m_command->initialize();
+    }
+    void execute() override { m_command->execute(); }
+    void end(bool interrupted) override { m_command->end(interrupted); }
+    bool isFinished() override {
+        // Check timeout first, then check wrapped command
+        double currentTime = pros::millis();
+        double elapsedTime = (currentTime - m_startTime) / 1000.0; // Convert to seconds
+
+        return elapsedTime >= m_timeout || m_command->isFinished();
+    }
+    CommandBase* clone() const override { return new TimeoutCommand(std::unique_ptr<CommandBase>(m_command->clone()), m_timeout); }
+    std::string getName() const override { return m_command->getName() + "_WithTimeout(" + std::to_string(m_timeout) + "s)"; }
+};
+
+// Create a wrapper command that delegates to the original but has a custom name
+class NamedCommand : public CommandBase {
+private:
+    std::unique_ptr<CommandBase> m_command;
+    std::string m_name;
+
+public:
+    NamedCommand(
+        std::unique_ptr<CommandBase> command,
+        const std::string& name
+    ) :
+        m_command(std::move(command)),
+        m_name(name)
+    { for (auto* subsystem : m_command->getRequiredSubsystems()) addRequirements(subsystem); } // Copy requirements from wrapped command
+
+    void initialize() override { m_command->initialize(); }
+    void execute() override { m_command->execute(); }
+    void end(bool interrupted) override { m_command->end(interrupted); }
+    bool isFinished() override { return m_command->isFinished(); }
+    std::string getName() const override { return m_name; }
+    CommandBase* clone() const override {
+        return new NamedCommand(std::unique_ptr<CommandBase>(m_command->clone()), m_name);
+    }
+};
+
+// Command that waits for a specified time
+class WaitCommand : public CommandBase {
+private:
+    double m_duration;
+    double m_startTime;
+
+public:
+    WaitCommand(
+        double seconds
+    ) : 
+        m_duration(seconds),
+        m_startTime(0) 
+    {}
+
+    void initialize() override { m_startTime = pros::millis(); }
+    bool isFinished() override {
+        double currentTime = pros::millis();
+        double elapsedTime = (currentTime - m_startTime) / 1000.0; // Convert to seconds
+        return elapsedTime >= m_duration;
+    }
+    CommandBase* clone() const override { return new WaitCommand(m_duration); }
+    std::string getName() const override { return "Wait(" + std::to_string(m_duration) + "s)"; }
+};
+
+// RunFor command - executes action for specified number of cycles
+class RunForCommand : public CommandBase {
+private:
+    std::function<void()> m_action;
+    int m_cycles;
+    int m_currentCycle = 0;
+
+public:
+    RunForCommand(
+        std::function<void()> action,
+        int cycles,
+        std::initializer_list<SubsystemBase*> subsystems = {}
+    ) : 
+        m_action(action),
+        m_cycles(cycles)
+    {  for (auto* subsystem : subsystems) if (subsystem) addRequirements(subsystem); }
+    RunForCommand(
+        std::function<void()> action,
+        int cycles,
+        SubsystemBase* subsystem
+    ) :
+        RunForCommand(action, cycles, {subsystem})
+    {}
+
+
+    // Add a subsystem requirement - interrupts any commands using the same subsystem
+    void execute() override { 
+    inline void addRequirements(SubsystemBase* subsystem) {
+        m_action();
+        if (subsystem != nullptr) {
+        m_currentCycle++;
+            requiredSubsystems.push_back(subsystem);
+    }
+    bool isFinished() override { return m_currentCycle >= m_cycles; }
+    CommandBase* clone() const override { 
+        auto clone = new RunForCommand(m_action, m_cycles);
+        // Copy requirements
+        for (auto* subsystem : getRequiredSubsystems()) {
+            clone->addRequirements(subsystem);
+        }
+        }
+        return clone;
+    }
+    }
+    std::string getName() const override { return "RunFor"; }
+};
+
+// Command that accepts lambdas for all lifecycle methods
+class FunctionalCommand : public CommandBase {
+private:
+    std::function<void()> m_onInit = nullptr;
+    std::function<void()> m_onExecute = nullptr;
+    std::function<void(bool)> m_onEnd = nullptr;
+    std::function<bool()> m_isFinished = nullptr;
+    std::string m_name = "Functional";
+
+
+    // Get all required subsystems (for interruption logic)
+public:
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+    FunctionalCommand(
+        return requiredSubsystems;
+        std::function<void()> onInit,
+        std::function<void()> onExecute,
+        std::function<void(bool)> onEnd,
+        std::function<bool()> isFinished,
+        std::initializer_list<SubsystemBase*> subsystems = {},
+        std::string name = "Functional"
+    ) : 
+        m_onInit(onInit),
+        m_onExecute(onExecute),
+        m_onEnd(onEnd),
+        m_isFinished(isFinished),
+        m_name(name)
+    {  for (auto* subsystem : subsystems) if (subsystem) addRequirements(subsystem); }
+    FunctionalCommand(
+        std::function<void()> onInit,
+        std::function<void()> onExecute,
+        std::function<void(bool)> onEnd,
+        std::function<bool()> isFinished,
+        SubsystemBase* subsystem,
+        std::string name = "Functional"
+    ) :
+        FunctionalCommand(onInit, onExecute, onEnd, isFinished, {subsystem}, name)
+    {}
+
+    void initialize() override { if (m_onInit) m_onInit(); }
+    void execute() override { if (m_onExecute) m_onExecute(); }
+    void end(bool interrupted) override { if (m_onEnd) m_onEnd(interrupted); }
+    bool isFinished() override {
+        if (m_isFinished) return m_isFinished();
+        return false; // Default to never finishing
+    }
+    CommandBase* clone() const override {
+        auto clone = new FunctionalCommand(m_onInit, m_onExecute, m_onEnd, m_isFinished, {}, m_name);
+        for (auto* subsystem : getRequiredSubsystems()) {
+            clone->addRequirements(subsystem);
+        }
+        return clone;
+    }
+    }
+    std::string getName() const override { return m_name; }
+};
+
+
+// Command that runs a single action and immediately finishes
+class InstantCommand : public CommandBase {
+private:
+private:
+    std::vector<SubsystemBase*> requiredSubsystems;  // Subsystems required for this command
+    std::function<void()> m_action;
+
+public:
+    InstantCommand(
+        std::function<void()> action,
+        std::initializer_list<SubsystemBase*> subsystems = {}
+    ) :
+        m_action(action)
+    { for (auto* subsystem : subsystems) if (subsystem) addRequirements(subsystem); }
+    InstantCommand(
+        std::function<void()> action,
+        SubsystemBase* subsystem
+    ) :
+        InstantCommand(action, {subsystem})
+    {}
+
+    void initialize() override { if (m_action) m_action(); }
+    bool isFinished() override { return true; } // Always finished immediately
+    CommandBase* clone() const override {
+        auto clone = new InstantCommand(m_action);
+        // Copy requirements
+        for (auto* subsystem : getRequiredSubsystems()) clone->addRequirements(subsystem);
+        return clone;
+    }
+    std::string getName() const override { return "Instant"; }
+};
+};
+
+
+#endif
+// ============================================================================
+// COMMAND DECORATOR IMPLEMENTATIONS (after class definitions)
+// ============================================================================
+
+inline std::unique_ptr<CommandBase> CommandBase::withTimeout(double timeoutSeconds) {
+    auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
+    return std::unique_ptr<CommandBase>(new TimeoutCommand(std::move(clonedCommand), timeoutSeconds));
+}
+
+inline std::unique_ptr<CommandBase> CommandBase::withName(const std::string& name) {
+    auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
+    return std::unique_ptr<CommandBase>(new NamedCommand(std::move(clonedCommand), name));
+}
+
+#endif // COMMANDBASE_H_
+18 changes: 8 additions & 10 deletions 18
+Offseason/example-code/include/custom/command/driveCommand.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -11,18 +11,16 @@ class SubsystemBase;
+class DriveCommand: public CommandBase {
+class DriveCommand: public CommandBase {
+public:
+public:
+    DriveCommand(DriveSubsystem* sub, Controller* ctrl) { 
+    DriveCommand(DriveSubsystem* sub, Controller* ctrl) { 
+        subsystem = sub;
+        m_subsystem = sub;
+        controller = ctrl;
+        m_controller = ctrl;
+        addRequirements(subsystem);
+        addRequirements(m_subsystem);
+    }
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        subsystem->tankDrive(controller, false);
+        m_subsystem->tankDrive(m_controller, false);
+    }
+    }
+
+
+    inline void end() override {}
+    inline void end(bool interrupted) override {}
+
+    inline void interrupted() override {}
+
+
+    inline bool isFinished() override { return false; }
+    inline bool isFinished() override { return false; }
+
+
+@@ -31,8 +29,8 @@ class DriveCommand: public CommandBase {
+    }
+    }
+
+
+private:
+private:
+    DriveSubsystem* subsystem;
+    DriveSubsystem* m_subsystem;
+    Controller* controller;
+    Controller* m_controller;
+};
+};
+
+
+#endif
+#endif // DRIVECOMMAND_H_
+52 changes: 31 additions & 21 deletions 52
+Offseason/example-code/include/custom/command/exampleCommand.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -7,44 +7,54 @@
+class Pulse : public CommandBase {
+class Pulse : public CommandBase {
+public:
+public:
+    Pulse(ExampleSubsystem* exampleSub) { 
+    Pulse(ExampleSubsystem* exampleSub) { 
+        exampleSubsystem = exampleSub;
+        m_exampleSubsystem = exampleSub;
+        addRequirements(exampleSubsystem);
+        addRequirements(m_exampleSubsystem);
+        count = 0;
+    }
+
+    inline void initialize() override {
+        m_count = 0;
+        if (m_exampleSubsystem->getPosition() > m_pulseLen) {
+            m_exampleSubsystem->backward();
+            m_movingForward = false;
+        } else {
+            m_exampleSubsystem->forward();
+            m_movingForward = true;
+        }
+    }
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        uint32_t currentTime = pros::millis();
+        uint32_t currentTime = pros::millis();
+        double position = m_exampleSubsystem->getPosition();
+
+
+        if (exampleSubsystem->getPosition() >= pulseLen) {
+        if (position >= m_pulseLen && m_movingForward) {
+            exampleSubsystem->backward();
+            m_exampleSubsystem->backward();
+            count++;
+            m_movingForward = false;
+        } else if (exampleSubsystem->getPosition() <= -pulseLen) {
+            m_count++;
+            exampleSubsystem->forward();
+        } else if (position <= -m_pulseLen && !m_movingForward) {
+            count++;
+            m_exampleSubsystem->forward();
+            m_movingForward = true;
+            m_count++;
+        }
+        }
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %d", m_count);
+    }
+    }
+
+
+    inline void end() override {
+    inline void end(bool interrupted) override {
+        exampleSubsystem->stop();
+        m_exampleSubsystem->stop();
+    }
+
+    inline void interrupted() override {
+        printf("pulse stopped\n");
+        exampleSubsystem->stop();
+    }
+    }
+
+
+    inline bool isFinished() override {
+    inline bool isFinished() override {
+        return count > 8;
+        return m_count > 8;
+    }
+    }
+
+
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new Pulse(*this);
+        return new Pulse(*this);
+    }
+    }
+
+
+private:
+private:
+    ExampleSubsystem* exampleSubsystem;
+    ExampleSubsystem* m_exampleSubsystem;
+    double pulseLen = 300.0;
+    double m_pulseLen = 300.0;
+    uint8_t count = 0;
+    uint8_t m_count = 0;
+    bool m_movingForward = true;
+};
+};
+
+
+#endif
+#endif // EXAMPLECOMMAND_H_
+24 changes: 24 additions & 0 deletions 24
+Offseason/example-code/include/custom/command/exampleDefaultCommand.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,24 @@
+#ifndef EXAMPLEDEFAULTCOMMAND_H_
+#define EXAMPLEDEFAULTCOMMAND_H_
+
+#include "commandBase.h"
+#include "custom/subsystem/exampleSubsystem.h"
+
+class Hold : public CommandBase {
+public:
+    Hold(ExampleSubsystem* exampleSub) { 
+        exampleSubsystem = exampleSub;
+        addRequirements(exampleSubsystem);
+    }
+
+    inline void initialize() override {}
+    inline void execute() override { exampleSubsystem->setPosition(0, 100); }
+    inline void end(bool interrupted) override {}
+    inline bool isFinished() override { return false; }
+    inline CommandBase* clone() const override { return new Hold(*this); }
+
+private:
+    ExampleSubsystem* exampleSubsystem;
+};
+
+#endif // EXAMPLEDEFAULTCOMMAND_H_
+40 changes: 0 additions & 40 deletions 40
+Offseason/example-code/include/custom/command/instantCommand.h
+
+This file was deleted.
+44 changes: 22 additions & 22 deletions 44
+Offseason/example-code/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,5 +1,5 @@
+#ifndef CONTROLLER_HPP_
+#ifndef CONTROLLER_H_
+#define CONTROLLER_HPP_
+#define CONTROLLER_H_
+
+
+class Scheduler;
+class Scheduler;
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+@@ -17,10 +17,10 @@ class Controller : public pros::Controller {
+    ButtonBinder B();
+    ButtonBinder B();
+    ButtonBinder X();
+    ButtonBinder X();
+    ButtonBinder Y();
+    ButtonBinder Y();
+    ButtonBinder Right();
+    ButtonBinder RIGHT();
+    ButtonBinder Down();
+    ButtonBinder DOWN();
+    ButtonBinder Up();
+    ButtonBinder UP();
+    ButtonBinder Left();
+    ButtonBinder LEFT();
+    ButtonBinder L1();
+    ButtonBinder L1();
+    ButtonBinder L2();
+    ButtonBinder L2();
+    ButtonBinder R1();
+    ButtonBinder R1();
+@@ -33,9 +33,9 @@ class Controller : public pros::Controller {
+
+
+    void poll();
+    void poll();
+
+
+    std::vector<ButtonBinder> buttonBinders;
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<JoystickBinder> joystickBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    Scheduler* scheduler;
+    Scheduler* m_scheduler;
+};
+};
+
+
+enum class Edge { None, Rising, Falling, WhileTrue };
+enum class Edge { None, Rising, Falling, WhileTrue };
+@@ -49,11 +49,11 @@ class ButtonBinder {
+    void poll();
+    void poll();
+
+
+private:
+private:
+    Controller* controller;
+    Controller* m_controller;
+    pros::controller_digital_e_t button;
+    pros::controller_digital_e_t m_button;
+    const CommandBase* command;
+    const CommandBase* km_command;
+    Edge edge;
+    Edge m_edge;
+    CommandBase* runningCommand;
+    CommandBase* m_runningCommand;
+};
+};
+
+
+
+
+@@ -66,16 +66,16 @@ class JoystickBinder {
+    void poll();
+    void poll();
+
+
+private:
+private:
+    Controller* controller;
+    Controller* m_controller;
+    pros::controller_analog_e_t stick;
+    pros::controller_analog_e_t m_stick;
+    int threshold;
+    int m_threshold;
+    const CommandBase* command;
+    const CommandBase* km_command;
+    bool prev;
+    bool m_prev;
+    Edge edge;
+    Edge m_edge;
+    CommandBase* runningCommand;
+    CommandBase* m_runningCommand;
+};
+};
+
+
+
+
+
+
+#include "custom/scheduler.h"
+#include "custom/scheduler.h"
+#endif //CONTROLLER_HPP_
+#endif // CONTROLLER_H_
+32 changes: 16 additions & 16 deletions 32
+Offseason/example-code/include/custom/globals.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,5 +1,5 @@
+#ifndef GLOBALS_HPP_
+#ifndef GLOBALS_H_
+#define GLOBALS_HPP_
+#define GLOBALS_H_
+
+
+#include "pros/motors.hpp"
+#include "pros/motors.hpp"
+#include "lemlib/api.hpp"
+#include "lemlib/api.hpp"
+@@ -23,27 +23,27 @@ inline int percentToVelocity(int percent, pros::MotorGears color) {
+
+
+
+
+namespace drive {
+namespace drive {
+const static pros::controller_id_e_t mainControllerID = pros::E_CONTROLLER_MASTER;
+const static pros::controller_id_e_t kMainControllerID = pros::E_CONTROLLER_MASTER;
+const static pros::controller_analog_e_t leftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
+const static pros::controller_analog_e_t kLeftStickY = pros::E_CONTROLLER_ANALOG_LEFT_Y;
+const static pros::controller_analog_e_t rightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
+const static pros::controller_analog_e_t kRightStickY = pros::E_CONTROLLER_ANALOG_RIGHT_Y;
+
+
+const static int joystickDeadband = 1;
+const static int joystickDeadband = 1;
+const static double expoCurve = 1.0;
+const static double expoCurve = 1.0;
+
+
+const static std::vector<std::int8_t> leftMotorsID = {-10,-9,-8};
+const static std::vector<std::int8_t> kLeftMotorsID = {-10,-9,-8};
+const static std::vector<std::int8_t> rightMotorsID = {13,11,12};
+const static std::vector<std::int8_t> kRightMotorsID = {13,11,12};
+const static pros::v5::MotorGears driveTrainColor = pros::MotorGearset::green;
+const static pros::v5::MotorGears kDriveTrainColor = pros::MotorGearset::green;
+const static float wheelDiameter = lemlib::Omniwheel::NEW_325;
+const static float kWheelDiameter = lemlib::Omniwheel::NEW_325;
+const static int wheelTrack = 13.625;
+const static int kWheelTrack = 13.625;
+const static int wheelRPM = 400;
+const static int kWheelRPM = 400;
+const static int horizontalDrift = 2;
+const static int kHorizontalDrift = 2;
+
+
+const static int imuID = 5;
+const static int kIMUid = 5;
+} // namespace drive vars
+} // namespace drive vars
+
+
+namespace example {
+namespace example {
+const static std::int8_t motorId = 20;
+const static std::int8_t kMotorId = 20;
+const static pros::MotorGears motorColor = pros::MotorGearset::red;
+const static pros::MotorGears kMotorColor = pros::MotorGearset::red;
+} // namespace vars used for examples
+} // namespace vars used for examples
+
+
+} // all global consts
+} // all global consts
+@@ -59,4 +59,4 @@ namespace pulse {
+} // all global vars
+} // all global vars
+
+
+
+
+#endif
+#endif // GLOBALS_H_
+86 changes: 67 additions & 19 deletions 86
+Offseason/example-code/include/custom/scheduler.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,40 +1,88 @@
+#ifndef SCHEDULER_HPP_
+#ifndef SCHEDULER_H_
+#define SCHEDULER_HPP_
+#define SCHEDULER_H_
+
+
+class Controller;
+class Controller;
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/watchdog.h"
+#include <vector>
+#include <vector>
+#include <memory>
+#include <memory>
+#include <unordered_set>
+#include <unordered_set>
+#include <unordered_map>
+#include <unordered_map>
+#include <functional>
+
+
+class Scheduler {
+class Scheduler {
+public:
+public:
+    Scheduler();
+    // Singleton pattern
+    static Scheduler& getInstance();
+
+    // Core scheduling methods
+    void registerController(Controller* ctrl);
+    void registerController(Controller* ctrl);
+    CommandBase* addCommand(const CommandBase* cmd);
+    CommandBase* schedule(const CommandBase* cmd);
+    void setDefaultCommand(CommandBase* command);
+    void setDefaultCommand(SubsystemBase* sub, CommandBase* cmd);
+    void cancelCommand(CommandBase* commandInstance);
+    void cancel(CommandBase* commandInstance);
+    void registerSubsystemForPeriodic(SubsystemBase* subsystem);
+    void cancelAll();
+    void registerSubsystemForPeriodic(SubsystemBase* sub);
+    void run();
+    void run();
+
+
+
+    // Scheduler state management
+    void enable();
+    void disable();
+    bool isEnabled() const;
+
+    // Command state queries
+    bool isScheduled(const CommandBase* cmd) const;
+    CommandBase* requiring(SubsystemBase* subsystem) const;
+
+    // Command event callbacks
+    void onCommandInitialize(std::function<void(CommandBase*)> action);
+    void onCommandExecute(std::function<void(CommandBase*)> action);
+    void onCommandFinish(std::function<void(CommandBase*)> action);
+    void onCommandInterrupt(std::function<void(CommandBase*)> action);
+
+    // Robot state awareness
+    void setRobotEnabled(bool enabled);
+    bool isRobotEnabled() const;
+
+    // Utility methods
+    std::size_t size() const;
+    std::size_t size() const;
+    std::size_t defaultSize() const;
+    std::size_t defaultSize() const;
+    bool empty() const;
+    bool empty() const;
+
+
+private:
+private:
+    // Individual scheduler tick steps
+    // Private constructor for singleton
+    void step1_runSubsystemPeriodicMethods();
+    Scheduler();
+    void step2_pollCommandSchedulingTriggers();
+
+    void step3_runAndFinishScheduledCommands();
+    // Internal helper methods
+    void step4_scheduleDefaultCommands();
+    void initCommand(CommandBase* command, const std::unordered_set<SubsystemBase*>& requirements);
+
+    void interruptCommand(CommandBase* command);
+    std::vector<std::unique_ptr<CommandBase>> queue;
+    void finishCommand(CommandBase* command);
+    std::unordered_map<SubsystemBase*, CommandBase*> defaultCommands;
+    bool requirementsFree(const std::unordered_set<SubsystemBase*>& requirements) const;
+    std::vector<SubsystemBase*> periodicSubsystems;
+    bool areCommandsInterruptible(const std::unordered_set<SubsystemBase*>& requirements) const;
+    std::vector<Controller*> controllers;
+
+    // Scheduler state
+    bool m_enabled = false;
+    bool m_robotEnabled = false;
+    bool m_inRunLoop = false;
+
+    // Command storage
+    std::vector<std::unique_ptr<CommandBase>> m_queue;
+    std::unordered_map<SubsystemBase*, CommandBase*> m_defaultCommands;
+    std::unordered_map<SubsystemBase*, CommandBase*> m_requirements;
+    std::vector<SubsystemBase*> m_periodicSubsystems;
+    std::vector<Controller*> m_controllers;
+
+    // Commands to schedule during run loop
+    std::vector<CommandBase*> m_toSchedule;
+
+    // Event callbacks
+    std::vector<std::function<void(CommandBase*)>> m_initActions;
+    std::vector<std::function<void(CommandBase*)>> m_executeActions;
+    std::vector<std::function<void(CommandBase*)>> m_finishActions;
+    std::vector<std::function<void(CommandBase*)>> m_interruptActions;
+
+    // Performance monitoring
+    Watchdog m_watchdog;
+};
+};
+
+
+#endif // SCHEDULER_HPP_
+#endif // SCHEDULER_H_
+48 changes: 24 additions & 24 deletions 48
+Offseason/example-code/include/custom/subsystem/driveSubsystem.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -9,48 +9,48 @@
+class DriveSubsystem : public SubsystemBase {
+class DriveSubsystem : public SubsystemBase {
+    public:
+    public:
+        DriveSubsystem()
+        DriveSubsystem()
+            : throttle_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            : m_throttle_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            steer_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            m_steer_curve(globalConst::drive::joystickDeadband, globalConst::drive::joystickDeadband, globalConst::drive::expoCurve),
+            left_motor_group(globalConst::drive::leftMotorsID, globalConst::drive::driveTrainColor),
+            m_left_motor_group(globalConst::drive::kLeftMotorsID, globalConst::drive::kDriveTrainColor),
+            right_motor_group(globalConst::drive::rightMotorsID, globalConst::drive::driveTrainColor),
+            m_right_motor_group(globalConst::drive::kRightMotorsID, globalConst::drive::kDriveTrainColor),
+            drivetrain(&left_motor_group, &right_motor_group, globalConst::drive::wheelTrack, globalConst::drive::wheelDiameter, globalConst::drive::wheelRPM, globalConst::drive::horizontalDrift),
+            m_drivetrain(&m_left_motor_group, &m_right_motor_group, globalConst::drive::kWheelTrack, globalConst::drive::kWheelDiameter, globalConst::drive::kWheelRPM, globalConst::drive::kHorizontalDrift),
+            sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
+            m_sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
+            lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
+            m_lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
+            angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
+            m_angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
+            chassis(drivetrain, lateral_controller, angular_controller, sensors, &throttle_curve, &steer_curve)
+            m_chassis(m_drivetrain, m_lateral_controller, m_angular_controller, m_sensors, &m_throttle_curve, &m_steer_curve)
+        {
+        {
+            chassis.calibrate(); // calibrate sensors
+            m_chassis.calibrate(); // calibrate sensors
+        }
+        }
+
+
+        inline lemlib::Pose pos(){
+        inline lemlib::Pose pos(){
+            return chassis.getPose();
+            return m_chassis.getPose();
+        }
+        }
+
+
+        inline void tankDrive(Controller* controller, bool inverted){
+        inline void tankDrive(Controller* controller, bool inverted){
+            chassis.tank(
+            m_chassis.tank(
+                inverted ? -controller->get_analog(globalConst::drive::rightStickY) : controller->get_analog(globalConst::drive::leftStickY),
+                inverted ? -controller->get_analog(globalConst::drive::kRightStickY) : controller->get_analog(globalConst::drive::kLeftStickY),
+                inverted ?  -controller->get_analog(globalConst::drive::leftStickY) : controller->get_analog(globalConst::drive::rightStickY));
+                inverted ?  -controller->get_analog(globalConst::drive::kLeftStickY) : controller->get_analog(globalConst::drive::kRightStickY));
+        }
+        }
+
+
+    private:
+    private:
+        // input curve for throttle and steer inputs during driver control
+        // input curve for throttle and steer inputs during driver control
+        lemlib::ExpoDriveCurve throttle_curve;
+        lemlib::ExpoDriveCurve m_throttle_curve;
+        lemlib::ExpoDriveCurve steer_curve;
+        lemlib::ExpoDriveCurve m_steer_curve;
+
+
+        pros::MotorGroup left_motor_group;
+        pros::MotorGroup m_left_motor_group;
+        pros::MotorGroup right_motor_group;
+        pros::MotorGroup m_right_motor_group;
+        lemlib::Drivetrain drivetrain;
+        lemlib::Drivetrain m_drivetrain;
+
+
+        // odometry settings
+        // odometry settings
+        lemlib::OdomSensors sensors;
+        lemlib::OdomSensors m_sensors;
+
+
+        // lateral PID controller
+        // lateral PID controller
+        lemlib::ControllerSettings lateral_controller;
+        lemlib::ControllerSettings m_lateral_controller;
+        // angular PID controller
+        // angular PID controller
+        lemlib::ControllerSettings angular_controller;
+        lemlib::ControllerSettings m_angular_controller;
+
+
+        // create the chassis
+        // create the chassis
+        lemlib::Chassis chassis;
+        lemlib::Chassis m_chassis;
+};
+};
+
+
+#endif
+#endif // DRIVESUBSYSTEM_H_
+36 changes: 18 additions & 18 deletions 36
+Offseason/example-code/include/custom/subsystem/exampleSubsystem.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -6,46 +6,46 @@
+
+
+class ExampleSubsystem : public SubsystemBase {
+class ExampleSubsystem : public SubsystemBase {
+    public:
+    public:
+        inline ExampleSubsystem() : motor(globalConst::example::motorId, globalConst::example::motorColor) {
+        inline ExampleSubsystem() : m_motor(globalConst::example::kMotorId, globalConst::example::kMotorColor) {
+            motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            m_motor.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
+            motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+            m_motor.set_encoder_units(pros::E_MOTOR_ENCODER_DEGREES);
+        }
+        }
+
+
+        inline void forward() {
+        inline void forward() {
+            motor.move_velocity(globalConst::MotorTools::percentToVelocity(30, globalConst::example::motorColor));
+            m_motor.move_velocity(globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
+        }
+        }
+
+
+        inline void backward() {
+        inline void backward() {
+            motor.move_velocity(-globalConst::MotorTools::percentToVelocity(30, globalConst::example::motorColor));
+            m_motor.move_velocity(-globalConst::MotorTools::percentToVelocity(30, globalConst::example::kMotorColor));
+        }
+        }
+
+
+        inline void stop() {
+        inline void stop() {
+            motor.brake();
+            m_motor.brake();
+        }
+
+        inline void setPosition(int val, int persent) {
+            m_motor.move_absolute(val, globalConst::MotorTools::percentToVelocity(persent, globalConst::example::kMotorColor));
+        }
+        }
+
+
+        inline double getPosition() {
+        inline double getPosition() {
+            return motor.get_position();
+            return m_motor.get_position();
+        }
+        }
+
+
+        inline void periodic() override {
+        inline void periodic() override {
+            position = getPosition();
+            m_position = getPosition();
+
+
+            pros::screen::print(pros::E_TEXT_MEDIUM, 5, "Pulse Count: %3d", count); // try %f for float and not %d for int
+            // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %f", m_position);
+            pros::screen::print(pros::E_TEXT_MEDIUM, 6, "Pulse Position: %3d", position);
+
+
+            printf("\n\n\n%3d\n", count);
+            printf("%3d\n", m_position);
+            printf("%3d\n", position);
+
+
+            std::cout << count << '\n';
+            std::cout << m_position << '\n';
+            std::cout << position << '\n';
+        }
+        }
+
+
+
+
+    private:
+    private:
+        pros::Motor motor;
+        pros::Motor m_motor;
+        int count = 0;
+        double m_position = 0;
+        double position = 0;
+
+
+};
+};
+
+
+#endif
+#endif // EXAMPLESUBSYSTEM_H_
+82 changes: 72 additions & 10 deletions 82
+Offseason/example-code/include/custom/subsystem/subsystemBase.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -5,31 +5,93 @@
+#define SUBSYSTEMBASE_H_
+#define SUBSYSTEMBASE_H_
+
+
+#include "custom/globals.h"
+#include "custom/globals.h"
+#include "custom/command/commandBase.h"
+#include <vector>
+#include <vector>
+#include <memory>
+#include <functional>
+
+
+// Forward declaration
+class Scheduler;
+class Scheduler;
+
+
+class SubsystemBase {
+class SubsystemBase {
+public:
+public:
+    // Constructor automatically registers subsystem with scheduler if available
+    // Constructor automatically registers subsystem with scheduler if available
+    SubsystemBase();
+    SubsystemBase();
+    virtual ~SubsystemBase() = default;
+
+    // ========================================================================
+    // LIFECYCLE METHODS
+    // ========================================================================
+
+
+    // Called every loop if registered with the scheduler
+    virtual void periodic() {};
+    virtual void periodic() {};
+
+
+    // Ensure proper cleanup for derived subsystems
+    // ========================================================================
+    virtual ~SubsystemBase() = default;
+    // SUBSYSTEM FUNCTIONS
+
+    // ========================================================================
+
+    // Sets a command to run when no other command is using the subsystem
+    void setDefaultCommand(CommandBase* cmd);
+    // Get the command currently requiring this subsystem (returns nullptr if none)
+    CommandBase* getCurrentCommand() const;
+    // Set the global scheduler reference for auto-registration
+    // Set the global scheduler reference for auto-registration
+    static void setScheduler(Scheduler* sched);
+    static void setScheduler(Scheduler* sch);
+
+    // Register any subsystems created before scheduler was set
+    // Register any subsystems created before scheduler was set
+    static void registerPendingSubsystems();
+    static void registerPendingSubsystems();
+
+
+    // ========================================================================
+    // COMMAND FACTORY METHODS
+    // ========================================================================
+    // These methods create commands that automatically require this subsystem
+
+    // Create a command that runs the given function once, then finishes
+    std::unique_ptr<CommandBase> runOnce(std::function<void()> action);
+    // Create a command that runs the given function repeatedly until interrupted
+    std::unique_ptr<CommandBase> run(std::function<void()> action);
+    // Create a command that runs the given function until the condition becomes true
+    std::unique_ptr<CommandBase> runUntil(std::function<void()> action, std::function<bool()> condition);
+    // Create a command that runs the given function for a specified number of scheduler cycles
+    std::unique_ptr<CommandBase> runFor(std::function<void()> action, int cycles);
+
+private:
+private:
+    static Scheduler* globalScheduler;
+    static Scheduler* m_globalScheduler;
+    static std::vector<SubsystemBase*> pendingSubsystems;
+    static std::vector<SubsystemBase*> m_pendingSubsystems;
+};
+};
+
+
+#endif
+// ============================================================================
+// COMMAND FACTORY METHOD IMPLEMENTATIONS
+// ============================================================================
+
+// Create a command that runs the given function once, then finishes
+inline std::unique_ptr<CommandBase> SubsystemBase::runOnce(std::function<void()> action) {
+    return std::unique_ptr<CommandBase>(new InstantCommand(action, this));
+}
+
+// Create a command that runs the given function repeatedly until interrupted
+inline std::unique_ptr<CommandBase> SubsystemBase::run(std::function<void()> action) {
+    return std::unique_ptr<CommandBase>(new FunctionalCommand(
+        nullptr,    // onInit
+        action,     // onExecute (runs every cycle)
+        nullptr,    // onEnd
+        nullptr,    // isFinished (defaults to false - runs until interrupted)
+        this,       // subsystem
+        "Run"       // name
+    ));
+}
+
+// Create a command that runs the given function until the condition becomes true
+inline std::unique_ptr<CommandBase> SubsystemBase::runUntil(std::function<void()> action, std::function<bool()> condition) {
+    return std::unique_ptr<CommandBase>(new FunctionalCommand(
+        nullptr,    // onInit
+        action,     // onExecute (runs every cycle)
+        nullptr,    // onEnd
+        condition,  // isFinished (stops when condition is true)
+        this,       // subsystem
+        "RunUntil"  // name
+    ));
+}
+
+// Create a command that runs the given function for a specified number of scheduler cycles
+inline std::unique_ptr<CommandBase> SubsystemBase::runFor(std::function<void()> action, int cycles) {
+    return std::unique_ptr<CommandBase>(new RunForCommand(action, cycles, this));
+}
+
+#endif // SUBSYSTEMBASE_H_
+79 changes: 79 additions & 0 deletions 79
+Offseason/example-code/include/custom/watchdog.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,79 @@
+#ifndef WATCHDOG_H_
+#define WATCHDOG_H_
+
+#include <vector>
+#include <string>
+#include "pros/rtos.hpp"
+
+class Watchdog {
+public:
+    Watchdog() {}
+    static Watchdog& getInstance() {
+        static Watchdog instance;
+        return instance;
+    }
+
+    struct Epoch {
+        std::string name;
+        uint32_t timestamp;
+        uint32_t duration;
+    };
+
+    // Start timing a new epoch
+    void addEpoch(const std::string& name) {
+        uint32_t currentTime = pros::millis();
+
+        if (m_epochs.empty()) {
+            // First epoch - initialize timing
+            m_startTime = currentTime;
+            m_lastEpochTime = currentTime;
+        }
+
+        Epoch epoch;
+        epoch.name = name;
+        epoch.timestamp = currentTime - m_startTime;
+        epoch.duration = currentTime - m_lastEpochTime;
+
+        m_epochs.push_back(epoch);
+        m_lastEpochTime = currentTime;
+    }
+
+    // Reset watchdog for new scheduler loop
+    void reset() {
+        m_epochs.clear();
+        m_startTime = 0;
+        m_lastEpochTime = 0;
+    }
+
+    // Print performance summary (call when loop is slow)
+    void printEpochs() {
+        printf("[WATCHDOG] Performance Summary:\n");
+        for (const auto& epoch : m_epochs) {
+            printf("  %s: %dms\n", epoch.name.c_str(), epoch.duration);
+        }
+        printf("  Total Loop: %dms\n", getTotalTime());
+    }
+
+    // Get total loop time
+    uint32_t getTotalTime() const {
+        if (m_epochs.empty()) return 0;
+        return m_epochs.back().timestamp + m_epochs.back().duration;
+    }
+
+    // Check if any epoch exceeded threshold
+    bool hasSlowEpochs(uint32_t thresholdMs = 5) const {
+        for (const auto& epoch : m_epochs) {
+            if (epoch.duration > thresholdMs) {
+                return true;
+            }
+        }
+        return getTotalTime() > 20; // FRC loop should be ~20ms
+    }
+
+private:
+    std::vector<Epoch> m_epochs;
+    uint32_t m_startTime = 0;
+    uint32_t m_lastEpochTime = 0;
+};
+
+#endif // WATCHDOG_H_
+3 changes: 2 additions & 1 deletion 3
+Offseason/example-code/include/main.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -42,10 +42,10 @@
+#include "custom/scheduler.h"
+#include "custom/scheduler.h"
+#include "custom/controller.h"
+#include "custom/controller.h"
+#include "custom/globals.h"
+#include "custom/globals.h"
+#include "custom/watchdog.h"
+
+
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/subsystem/subsystemBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/commandBase.h"
+#include "custom/command/instantCommand.h"
+
+
+/**
+/**
+ * You should add more #includes here
+ * You should add more #includes here
+@@ -54,6 +54,7 @@
+#include "custom/subsystem/driveSubsystem.h"
+#include "custom/subsystem/driveSubsystem.h"
+
+
+#include "custom/command/exampleCommand.h"
+#include "custom/command/exampleCommand.h"
+#include "custom/command/exampleDefaultCommand.h"
+#include "custom/subsystem/exampleSubsystem.h"
+#include "custom/subsystem/exampleSubsystem.h"
+
+
+
+
+114 changes: 57 additions & 57 deletions 114
+Offseason/example-code/src/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -3,17 +3,17 @@
+
+
+// Controller constructor: initializes the controller and binds it to a scheduler.
+// Controller constructor: initializes the controller and binds it to a scheduler.
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+Controller::Controller(pros::controller_id_e_t id, Scheduler* sch)
+    : pros::Controller(id), scheduler(sch) {}
+    : pros::Controller(id), m_scheduler(sch) {}
+
+
+// Create a new ButtonBinder for every available button on this controller
+// Create a new ButtonBinder for every available button on this controller
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+ButtonBinder Controller::A() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_A); }
+ButtonBinder Controller::B() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_B); }
+ButtonBinder Controller::B() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_B); }
+ButtonBinder Controller::X() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_X); }
+ButtonBinder Controller::X() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_X); }
+ButtonBinder Controller::Y() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_Y); }
+ButtonBinder Controller::Y() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_Y); }
+ButtonBinder Controller::Right() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
+ButtonBinder Controller::RIGHT() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_RIGHT); }
+ButtonBinder Controller::Down() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
+ButtonBinder Controller::DOWN() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_DOWN); }
+ButtonBinder Controller::Up() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
+ButtonBinder Controller::UP() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_UP); }
+ButtonBinder Controller::Left() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
+ButtonBinder Controller::LEFT() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_LEFT); }
+ButtonBinder Controller::L1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L1); }
+ButtonBinder Controller::L1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L1); }
+ButtonBinder Controller::L2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L2); }
+ButtonBinder Controller::L2() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_L2); }
+ButtonBinder Controller::R1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R1); }
+ButtonBinder Controller::R1() { return ButtonBinder(this, pros::E_CONTROLLER_DIGITAL_R1); }
+@@ -28,92 +28,92 @@ JoystickBinder Controller::RightJoyX(int threshold) { return JoystickBinder(this
+
+
+// Poll all binders to check for input events and schedule/cancel commands
+// Poll all binders to check for input events and schedule/cancel commands
+void Controller::poll() {
+void Controller::poll() {
+    for (auto& binder : buttonBinders) binder.poll();
+    for (auto& binder : m_buttonBinders) binder.poll();
+    for (auto& binder : joystickBinders) binder.poll();
+    for (auto& binder : m_joystickBinders) binder.poll();
+}
+}
+
+
+// ButtonBinder constructor: binds to a controller
+// ButtonBinder constructor: binds to a controller
+ButtonBinder::ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn)
+ButtonBinder::ButtonBinder(Controller* ctrl, pros::controller_digital_e_t btn)
+    : controller(ctrl), button(btn), command(nullptr), edge(Edge::None), runningCommand(nullptr) {}
+    : m_controller(ctrl), m_button(btn), km_command(nullptr), m_edge(Edge::None), m_runningCommand(nullptr) {}
+
+
+// Bind a command to button movement (rising edge, falling edge, or while held)
+// Bind a command to button movement (rising edge, falling edge, or while held)
+ButtonBinder& ButtonBinder::onTrue(const CommandBase* cmd) {
+ButtonBinder& ButtonBinder::onTrue(const CommandBase* cmd) {
+    command = cmd;
+    km_command = cmd;
+    edge = Edge::Rising;
+    m_edge = Edge::Rising;
+    controller->buttonBinders.emplace_back(*this);
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+    return m_controller->m_buttonBinders.back();
+}
+}
+ButtonBinder& ButtonBinder::onFalse(const CommandBase* cmd) {
+ButtonBinder& ButtonBinder::onFalse(const CommandBase* cmd) {
+    command = cmd;
+    km_command = cmd;
+    edge = Edge::Falling;
+    m_edge = Edge::Falling;
+    controller->buttonBinders.emplace_back(*this);
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+    return m_controller->m_buttonBinders.back();
+}
+}
+ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
+ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
+    command = cmd;
+    km_command = cmd;
+    edge = Edge::WhileTrue;
+    m_edge = Edge::WhileTrue;
+    controller->buttonBinders.emplace_back(*this);
+    m_controller->m_buttonBinders.emplace_back(*this);
+    return controller->buttonBinders.back();
+    return m_controller->m_buttonBinders.back();
+}
+}
+
+
+// Poll the button for events and schedule/cancel commands as needed
+// Poll the button for events and schedule/cancel commands as needed
+void ButtonBinder::poll() {
+void ButtonBinder::poll() {
+    if (edge == Edge::Rising) {
+    if (m_edge == Edge::Rising) {
+        bool curr = controller->get_digital_new_press(button);
+        bool curr = m_controller->get_digital_new_press(m_button);
+        if (curr) controller->scheduler->addCommand(command);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
+    }
+    }
+    if (edge == Edge::Falling) {
+    if (m_edge == Edge::Falling) {
+        bool curr = controller->get_digital_new_release(button);
+        bool curr = m_controller->get_digital_new_release(m_button);
+        if (curr) controller->scheduler->addCommand(command);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
+    }
+    }
+    if (edge == Edge::WhileTrue) {
+    if (m_edge == Edge::WhileTrue) {
+        bool curr = controller->get_digital(button);
+        bool curr = m_controller->get_digital(m_button);
+        if (curr && !runningCommand) {
+        if (curr && !m_runningCommand) {
+            runningCommand = controller->scheduler->addCommand(command);
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+        } else if (!curr && runningCommand) {
+        } else if (!curr && m_runningCommand) {
+            controller->scheduler->cancelCommand(runningCommand);
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            runningCommand = nullptr;
+            m_runningCommand = nullptr;
+        }
+        }
+    }
+    }
+}
+}
+
+
+// JoystickBinder constructor: binds to a controller
+// JoystickBinder constructor: binds to a controller
+JoystickBinder::JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold)
+JoystickBinder::JoystickBinder(Controller* ctrl, pros::controller_analog_e_t stick, int threshold)
+    : controller(ctrl), stick(stick), threshold(threshold), command(nullptr), edge(Edge::None), prev(false), runningCommand(nullptr) {}
+    : m_controller(ctrl), m_stick(stick), m_threshold(threshold), km_command(nullptr), m_edge(Edge::None), m_prev(false), m_runningCommand(nullptr) {}
+
+
+// Bind a command to joystick movement (rising edge, falling edge, or while held)
+// Bind a command to joystick movement (rising edge, falling edge, or while held)
+JoystickBinder& JoystickBinder::onTrue(const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::onTrue(const CommandBase* cmd) {
+    this->command = cmd;
+    this->km_command = cmd;
+    edge = Edge::Rising;
+    m_edge = Edge::Rising;
+    controller->joystickBinders.emplace_back(*this);
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+    return m_controller->m_joystickBinders.back();
+}
+}
+JoystickBinder& JoystickBinder::onFalse(const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::onFalse(const CommandBase* cmd) {
+    this->command = cmd;
+    this->km_command = cmd;
+    edge = Edge::Falling;
+    m_edge = Edge::Falling;
+    controller->joystickBinders.emplace_back(*this);
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+    return m_controller->m_joystickBinders.back();
+}
+}
+JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
+JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
+    this->command = cmd;
+    this->km_command = cmd;
+    edge = Edge::WhileTrue;
+    m_edge = Edge::WhileTrue;
+    controller->joystickBinders.emplace_back(*this);
+    m_controller->m_joystickBinders.emplace_back(*this);
+    return controller->joystickBinders.back();
+    return m_controller->m_joystickBinders.back();
+}
+}
+
+
+// Poll the joystick for events and schedule/cancel commands as needed
+// Poll the joystick for events and schedule/cancel commands as needed
+void JoystickBinder::poll() {
+void JoystickBinder::poll() {
+    int curr = controller->get_analog(stick);
+    int curr = m_controller->get_analog(m_stick);
+    bool above = (threshold >= 0) ? (curr >= threshold) : (curr <= threshold);
+    bool above = (m_threshold >= 0) ? (curr >= m_threshold) : (curr <= m_threshold);
+    if (edge == Edge::Rising && above && !prev) controller->scheduler->addCommand(command);
+    if (m_edge == Edge::Rising && above && !m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (edge == Edge::Falling && !above && prev) controller->scheduler->addCommand(command);
+    if (m_edge == Edge::Falling && !above && m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (edge == Edge::WhileTrue) {
+    if (m_edge == Edge::WhileTrue) {
+        if (above && !runningCommand) {
+        if (above && !m_runningCommand) {
+            runningCommand = controller->scheduler->addCommand(command);
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+        } else if (!above && runningCommand) {
+        } else if (!above && m_runningCommand) {
+            controller->scheduler->cancelCommand(runningCommand);
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            runningCommand = nullptr;
+            m_runningCommand = nullptr;
+        }
+        }
+    }
+    }
+    prev = above;
+    m_prev = above;
+}
+}
+142 changes: 113 additions & 29 deletions 142
+Offseason/example-code/src/main.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,20 +1,56 @@
+#include "main.h"
+#include "main.h"
+
+
+static Scheduler scheduler;
+Controller controller(globalConst::drive::kMainControllerID, &Scheduler::getInstance());
+
+Controller controller(globalConst::drive::mainControllerID, &scheduler);
+
+
+// Add Subsystems Here
+// Add Subsystems Here
+ExampleSubsystem* exampleSub = new ExampleSubsystem();
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+
+// Example factory calls for CommandBase using ExampleSubsystem
+std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+
+// Default commands
+// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+
+// Example command variations
+// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+// std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
+// std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
+// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+//     [](){ exampleSub->forward(); },     // initialize
+//     [](){ /* execute logic */ },        // execute  
+//     [](bool interrupted){ exampleSub->stop(); }, // end
+//     [](){ return false; },              // isFinished
+//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
+//     "Functional"                         // name
+// );
+// std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
+
+
+
+
+
+// Add Any Button Bindings Here
+// Add Any Button Bindings Here
+void configureBindings() {
+void configureBindings() {
+    controller.LeftJoyY(-20).onFalse(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 8, "Stick<-20"); }));
+    // Basic InstantCommands
+    controller.Y().onTrue(new InstantCommand([] { exampleSub->forward(); }));
+    // controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
+    controller.Y().onFalse(new InstantCommand([] { exampleSub->stop(); }));
+    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+    controller.A().onTrue(new InstantCommand([] { pros::screen::print(pros::E_TEXT_MEDIUM, 7, "PRESS"); }));
+
+    controller.X().onTrue(new Pulse(exampleSub));
+    // // Original Pulse command
+    // controller.X().onTrue(pulseCommand.get());
+
+    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
+    // controller.A().onTrue(timeoutCommand.get());
+
+    // // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
+    // controller.B().onTrue(waitCommand.get());
+
+    // // FunctionalCommand - Custom command built with lambdas
+    // controller.DOWN().onTrue(functionalCommand.get());
+}
+}
+
+
+
+
+@@ -32,19 +68,39 @@ void configureBindings() {
+ */
+ */
+void initialize() {
+void initialize() {
+    // DO NOT Modify the code below
+    // DO NOT Modify the code below
+    SubsystemBase::setScheduler(&scheduler); // Enable auto-registration
+    SubsystemBase::setScheduler(&Scheduler::getInstance()); // Enable auto-registration
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().enable();
+    configureBindings();
+    configureBindings();
+    scheduler.registerController(&controller);
+    Scheduler::getInstance().registerController(&controller);
+    // Add New Code Below
+    // Add New Code Below
+
+    // exampleSub->setDefaultCommand(holdCommand.get());
+}
+}
+
+
+/**
+/**
+ * Runs while the robot is in the disabled state of Field Management System or
+ * Runs while the robot is in the disabled state of Field Management System or
+ * the VEX Competition Switch, following either autonomous or opcontrol. When
+ * the VEX Competition Switch, following either autonomous or opcontrol. When
+ * the robot is enabled, this task will exit.
+ * the robot is enabled, this task will exit.
+ */
+ */
+void disabled() {}
+void disabled() { 
+    Scheduler::getInstance().setRobotEnabled(false);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start");
+        for(int i=1; i<=13; i++) pros::screen::print(pros::E_TEXT_MEDIUM, i, "--------DISABLED--------");
+        watchdog.addEpoch("pre-scheduler");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+}
+
+
+/**
+/**
+ * Runs after initialize(), and before autonomous when connected to the Field
+ * Runs after initialize(), and before autonomous when connected to the Field
+@@ -55,7 +111,10 @@ void disabled() {}
+ * This task will exit when the robot is enabled and autonomous or opcontrol
+ * This task will exit when the robot is enabled and autonomous or opcontrol
+ * starts.
+ * starts.
+ */
+ */
+void competition_initialize() {}
+void competition_initialize() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().cancelAll();
+}
+
+
+/**
+/**
+ * Runs the user autonomous code. This function will be started in its own task
+ * Runs the user autonomous code. This function will be started in its own task
+@@ -68,7 +127,23 @@ void competition_initialize() {}
+ * will be stopped. Re-enabling the robot will restart the task, not re-start it
+ * will be stopped. Re-enabling the robot will restart the task, not re-start it
+ * from where it left off.
+ * from where it left off.
+ */
+ */
+void autonomous() {}
+void autonomous() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+        watchdog.reset();
+        static uint32_t lastTick = pros::millis();
+        uint32_t currentTick = pros::millis();
+        uint32_t deltaTime = currentTick - lastTick;
+        lastTick = currentTick;
+        watchdog.addEpoch("start");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+}
+
+
+/**
+/**
+ * Runs the operator control code. This function will be started in its own task
+ * Runs the operator control code. This function will be started in its own task
+@@ -84,21 +159,30 @@ void autonomous() {}
+ * task, not resume it from where it left off.
+ * task, not resume it from where it left off.
+ */
+ */
+void opcontrol() {
+void opcontrol() {
+    Scheduler::getInstance().setRobotEnabled(true);
+    Scheduler::getInstance().cancelAll();
+    Watchdog watchdog;
+    while (true) {
+    while (true) {
+        static int lastTick = pros::millis();
+        watchdog.reset();
+        double robotTickSpeed = pros::millis() - lastTick;
+        static uint32_t lastTick = pros::millis();
+
+        uint32_t currentTick = pros::millis();
+        pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(scheduler.size()));
+        uint32_t deltaTime = currentTick - lastTick;
+        pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Default Size: %3d", static_cast<int>(scheduler.defaultSize()));
+        lastTick = currentTick;
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "robot tick: %3d", robotTickSpeed);
+
+
+
+        // DO NOT Modify the code below
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
+        scheduler.run();
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
+        // TODO change to count and run after a min time ms and print the full wait
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
+        pros::delay(30);
+        // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+        // // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %d", static_cast<int>(cancelIncomingCommand.get()->getInterruptionBehavior()));
+        // // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %d", static_cast<int>(ignoringDisableCommand.get()->getInterruptionBehavior()));
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
+        // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
+        pros::screen::print(pros::E_TEXT_MEDIUM, 9, "Loop time: %3dms", deltaTime);
+        watchdog.addEpoch("pre-scheduler");
+        Scheduler::getInstance().run();
+        watchdog.addEpoch("post-scheduler");
+        if (watchdog.hasSlowEpochs()) watchdog.printEpochs();
+        pros::delay(20);
+    }
+    }
+};
+};
+468 changes: 366 additions & 102 deletions 468
+Offseason/example-code/src/scheduler.cpp
+
+Large diffs are not rendered by default.
+37 changes: 26 additions & 11 deletions 37
+Offseason/example-code/src/subsystemBase.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -2,32 +2,47 @@
+#include "custom/scheduler.h"
+#include "custom/scheduler.h"
+
+
+// Static members
+// Static members
+Scheduler* SubsystemBase::globalScheduler = nullptr;
+Scheduler* SubsystemBase::m_globalScheduler = nullptr;
+std::vector<SubsystemBase*> SubsystemBase::pendingSubsystems;
+std::vector<SubsystemBase*> SubsystemBase::m_pendingSubsystems;
+
+
+// Constructor automatically registers subsystem with scheduler if available
+// Constructor automatically registers subsystem with scheduler if available
+SubsystemBase::SubsystemBase() {
+SubsystemBase::SubsystemBase() {
+    if (globalScheduler != nullptr) {
+    if (m_globalScheduler != nullptr) {
+        // Scheduler is available, register immediately
+        // Scheduler is available, register immediately
+        globalScheduler->registerSubsystemForPeriodic(this);
+        m_globalScheduler->registerSubsystemForPeriodic(this);
+    } else {
+    } else {
+        // Scheduler not yet available, add to pending list
+        // Scheduler not yet available, add to pending list
+        pendingSubsystems.push_back(this);
+        m_pendingSubsystems.push_back(this);
+    }
+    }
+}
+}
+
+
+// Set a default command for this subsystem
+void SubsystemBase::setDefaultCommand(CommandBase* cmd) {
+    if (m_globalScheduler != nullptr) {
+        m_globalScheduler->setDefaultCommand(this, cmd);
+    }
+}
+
+// Get the command currently requiring this subsystem
+CommandBase* SubsystemBase::getCurrentCommand() const {
+    if (m_globalScheduler != nullptr) {
+        return m_globalScheduler->requiring(const_cast<SubsystemBase*>(this));
+    }
+    return nullptr;
+}
+
+// Set the global scheduler reference for auto-registration
+// Set the global scheduler reference for auto-registration
+void SubsystemBase::setScheduler(Scheduler* sched) {
+void SubsystemBase::setScheduler(Scheduler* sch) {
+    globalScheduler = sched;
+    m_globalScheduler = sch;
+    registerPendingSubsystems();
+    registerPendingSubsystems();
+}
+}
+
+
+// Register any subsystems created before scheduler was set
+// Register any subsystems created before scheduler was set
+void SubsystemBase::registerPendingSubsystems() {
+void SubsystemBase::registerPendingSubsystems() {
+    if (globalScheduler != nullptr) {
+    if (m_globalScheduler != nullptr) {
+        for (SubsystemBase* subsystem : pendingSubsystems) {
+        for (SubsystemBase* subsystem : m_pendingSubsystems) {
+            globalScheduler->registerSubsystemForPeriodic(subsystem);
+            m_globalScheduler->registerSubsystemForPeriodic(subsystem);
+        }
+        }
+        pendingSubsystems.clear();
+        m_pendingSubsystems.clear();
+    }
+    }
+}
+}
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+
