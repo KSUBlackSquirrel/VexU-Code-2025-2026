@@ -1,0 +1,582 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2024-2025
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Jul 15
+small break for me
+fixed my implementation with subsystem->periodic(). when you add a subsystem to a command it is added to a list and runs periodic within the main loop.
+
+reason for break, weird printing bug. im asking for help and waiting for a response
+main
+
+1 parent 
+5100ff7
+ commit 7f42097
+
+File tree
+
+Test2025/command_test
+
+include/custom
+
+command
+
+commandBase.h
+down.h
+myTime.h
+pulse.h
+
+    up.h
+
+controller.h
+subsystem
+
+        controllerScreenSubsystem.h
+
+src
+
+            main.cpp
+
+8 files changed
++151
+-36
+lines changed
+ 
+‎Test2025/command_test/include/custom/command/commandBase.h‎
++15-4Lines changed: 15 additions & 4 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -13,9 +13,7 @@ class CommandBase {
+    virtual void execute() = 0;
+    virtual void execute() = 0;
+    virtual void end() = 0;
+    virtual void end() = 0;
+    virtual bool isFinished() = 0;
+    virtual bool isFinished() = 0;
+    virtual void interrupted() {}
+    virtual void interrupted() { end(); };
+    virtual void periodic() {}
+
+
+    virtual CommandBase* clone() const = 0;
+    virtual CommandBase* clone() const = 0;
+
+
+@@ -26,13 +24,26 @@ class CommandBase {
+        }
+        }
+    }
+    }
+
+
+    // Add a subsystem that this command uses (for periodic updates) without requiring it
+    inline void addUsedSubsystem(SubsystemBase* subsystem) {
+        if (subsystem != nullptr) {
+            usedSubsystems.push_back(subsystem);
+        }
+    }
+    
+    // Get all required subsystems - non-virtual to prevent overriding
+    // Get all required subsystems - non-virtual to prevent overriding
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+    inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const {
+        return requiredSubsystems;
+        return requiredSubsystems;
+    }
+    }
+    
+    // Get all used subsystems - non-virtual to prevent overriding
+    inline const std::vector<SubsystemBase*>& getUsedSubsystems() const {
+        return usedSubsystems;
+    }
+
+
+private:
+private:
+    std::vector<SubsystemBase*> requiredSubsystems;
+    std::vector<SubsystemBase*> requiredSubsystems;  // For interruption logic
+    std::vector<SubsystemBase*> usedSubsystems;      // For periodic updates
+};
+};
+
+
+#endif
+#endif
+‎Test2025/command_test/include/custom/command/down.h‎
+-2Lines changed: 0 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -27,8 +27,6 @@ class Down : public CommandBase {
+        return subsystem->getPosition() <= 0.0;
+        return subsystem->getPosition() <= 0.0;
+    }
+    }
+
+
+    inline void periodic() override { subsystem->periodic(); }
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new Down(*this);
+        return new Down(*this);
+    }
+    }
+‎Test2025/command_test/include/custom/command/myTime.h‎
+-2Lines changed: 0 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -21,8 +21,6 @@ class MyTime : public CommandBase {
+        return true;
+        return true;
+    }
+    }
+
+
+    inline void periodic() { subsystem->periodic(); }
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new MyTime(*this);
+        return new MyTime(*this);
+    }
+    }
+‎Test2025/command_test/include/custom/command/pulse.h‎
++38-12Lines changed: 38 additions & 12 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -3,42 +3,68 @@
+
+
+#include "commandBase.h"
+#include "commandBase.h"
+#include "custom/subsystem/motorSubsystem.h"
+#include "custom/subsystem/motorSubsystem.h"
+#include "custom/subsystem/controllerScreenSubsystem.h"
+
+
+class Pulse : public CommandBase {
+class Pulse : public CommandBase {
+public:
+public:
+    Pulse(MotorSubsystem* sub) { 
+    Pulse(MotorSubsystem* motorSub, ControllerScreenSubsystem* conSub) { 
+        subsystem = sub; 
+        motorSubsystem = motorSub;
+        addRequirements(subsystem);
+        controllerSubsystem = conSub;
+        addRequirements(motorSubsystem);           // Motor needs to be required for interruption
+        addUsedSubsystem(controllerSubsystem);     // Screen just needs periodic updates
+        toggle = false;
+        lastToggleTime = 0;
+    }
+    }
+
+
+    inline void execute() override {
+    inline void execute() override {
+        if (subsystem->getPosition() >= 150.0) {
+        uint32_t currentTime = pros::millis();
+            subsystem->backward();
+        
+        } else if (subsystem->getPosition() <= -150.0) {
+        if (motorSubsystem->getPosition() >= 150.0) {
+            subsystem->forward();
+            motorSubsystem->backward();
+            // Only toggle if enough time has passed
+            if (currentTime - lastToggleTime >= delay) {
+                toggle = true;
+                lastToggleTime = currentTime;
+            }
+        } else if (motorSubsystem->getPosition() <= -150.0) {
+            motorSubsystem->forward();
+            // Only toggle if enough time has passed
+            if (currentTime - lastToggleTime >= delay) {
+                toggle = true;
+                lastToggleTime = currentTime;
+            }
+        }
+        
+        if(toggle) {
+            controllerSubsystem->tickPulse();
+            toggle = false;
+        }
+        }
+    }
+    }
+
+
+    inline void end() override {
+    inline void end() override {
+        subsystem->stop();
+        motorSubsystem->stop();
+    }
+    }
+
+
+    inline void interrupted() override {
+    inline void interrupted() override {
+        subsystem->stop();
+        motorSubsystem->stop();
+    }
+    }
+
+
+    inline bool isFinished() override {
+    inline bool isFinished() override {
+        return false;
+        return false;
+    }
+    }
+
+
+    inline void periodic() override { subsystem->periodic(); }
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new Pulse(*this);
+        return new Pulse(*this);
+    }
+    }
+
+
+private:
+private:
+    MotorSubsystem* subsystem;
+    MotorSubsystem* motorSubsystem;
+    ControllerScreenSubsystem* controllerSubsystem;
+    bool toggle;
+    uint32_t lastToggleTime;
+    int delay = 200;
+};
+};
+
+
+#endif
+#endif
+‎Test2025/command_test/include/custom/command/up.h‎
+-2Lines changed: 0 additions & 2 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -27,8 +27,6 @@ class Up : public CommandBase {
+        return subsystem->getPosition() >= 150.0;
+        return subsystem->getPosition() >= 150.0;
+    }
+    }
+
+
+    inline void periodic() override { subsystem->periodic(); }
+    inline CommandBase* clone() const override {
+    inline CommandBase* clone() const override {
+        return new Up(*this);
+        return new Up(*this);
+    }
+    }
+‎Test2025/command_test/include/custom/controller.h‎
++74-6Lines changed: 74 additions & 6 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -19,17 +19,16 @@ class Controller : public pros::Controller {
+    }
+    }
+
+
+    inline void addCommand(const CommandBase* cmd) { 
+    inline void addCommand(const CommandBase* cmd) { 
+        // Get all required subsystems for the new command
+        // Check for conflicts with existing commands
+        const auto& newSubsystems = cmd->getRequiredSubsystems();
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        
+        if (!requiredSubsystems.empty()) {
+        if (!newSubsystems.empty()) {
+            // Check for existing commands using any of the same subsystems
+            // Check for existing commands using any of the same subsystems
+            for (auto it = scheduler->begin(); it != scheduler->end(); ) {
+            for (auto it = scheduler->begin(); it != scheduler->end(); ) {
+                const auto& existingSubsystems = (*it)->getRequiredSubsystems();
+                const auto& existingSubsystems = (*it)->getRequiredSubsystems();
+                bool conflict = false;
+                bool conflict = false;
+
+
+                // Check if there's any overlap in subsystems
+                // Check if there's any overlap in subsystems
+                for (SubsystemBase* newSub : newSubsystems) {
+                for (SubsystemBase* newSub : requiredSubsystems) {
+                    for (SubsystemBase* existingSub : existingSubsystems) {
+                    for (SubsystemBase* existingSub : existingSubsystems) {
+                        if (newSub == existingSub) {
+                        if (newSub == existingSub) {
+                            conflict = true;
+                            conflict = true;
+@@ -50,7 +49,27 @@ class Controller : public pros::Controller {
+        }
+        }
+
+
+        // Add the new command
+        // Add the new command
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone())); 
+        scheduler->push_back(std::unique_ptr<CommandBase>(cmd->clone()));
+    }
+    // Register a subsystem for periodic updates
+    inline void registerSubsystemForPeriodic(SubsystemBase* subsystem) {
+        if (subsystem != nullptr) {
+            // Check if already in the list
+            for (SubsystemBase* existing : periodicSubsystems) {
+                if (existing == subsystem) {
+                    return; // Already registered
+                }
+            }
+            periodicSubsystems.push_back(subsystem);
+        }
+    }
+    // Update all registered subsystems
+    inline void updateSubsystems() {
+        for (SubsystemBase* subsystem : periodicSubsystems) {
+            subsystem->periodic();
+        }
+    }
+    }
+
+
+    inline ButtonBinder setButtonCommand();
+    inline ButtonBinder setButtonCommand();
+@@ -65,6 +84,7 @@ class Controller : public pros::Controller {
+
+
+private:
+private:
+    std::vector<std::unique_ptr<CommandBase>>* scheduler;
+    std::vector<std::unique_ptr<CommandBase>>* scheduler;
+    std::vector<SubsystemBase*> periodicSubsystems;
+};
+};
+
+
+class ButtonBinder {
+class ButtonBinder {
+@@ -76,13 +96,37 @@ class ButtonBinder {
+        button = btn;
+        button = btn;
+        command = cmd;
+        command = cmd;
+        edge = Edge::Rising;
+        edge = Edge::Rising;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->buttonBinders.emplace_back(*this);
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+        return controller->buttonBinders.back();
+    }
+    }
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+    ButtonBinder& onFalse(pros::controller_digital_e_t btn, const CommandBase* cmd) {
+        button = btn;
+        button = btn;
+        command = cmd;
+        command = cmd;
+        edge = Edge::Falling;
+        edge = Edge::Falling;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->buttonBinders.emplace_back(*this);
+        controller->buttonBinders.emplace_back(*this);
+        return controller->buttonBinders.back();
+        return controller->buttonBinders.back();
+    }
+    }
+@@ -109,6 +153,18 @@ class JoystickBinder {
+        this->threshold = threshold;
+        this->threshold = threshold;
+        this->command = cmd;
+        this->command = cmd;
+        edge = Edge::Rising;
+        edge = Edge::Rising;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->joystickBinders.emplace_back(*this);
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+        return controller->joystickBinders.back();
+    }
+    }
+@@ -117,6 +173,18 @@ class JoystickBinder {
+        this->threshold = threshold;
+        this->threshold = threshold;
+        this->command = cmd;
+        this->command = cmd;
+        edge = Edge::Falling;
+        edge = Edge::Falling;
+        
+        // Register all subsystems from this command immediately
+        const auto& requiredSubsystems = cmd->getRequiredSubsystems();
+        for (SubsystemBase* subsystem : requiredSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        const auto& usedSubsystems = cmd->getUsedSubsystems();
+        for (SubsystemBase* subsystem : usedSubsystems) {
+            controller->registerSubsystemForPeriodic(subsystem);
+        }
+        
+        controller->joystickBinders.emplace_back(*this);
+        controller->joystickBinders.emplace_back(*this);
+        return controller->joystickBinders.back();
+        return controller->joystickBinders.back();
+    }
+    }
+‎Test2025/command_test/include/custom/subsystem/controllerScreenSubsystem.h‎
++17-5Lines changed: 17 additions & 5 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -6,22 +6,34 @@
+
+
+class ControllerScreenSubsystem : public SubsystemBase {
+class ControllerScreenSubsystem : public SubsystemBase {
+public:
+public:
+    inline ControllerScreenSubsystem(scheduler::Controller* con) : controller(con), count(0) {
+    inline ControllerScreenSubsystem(scheduler::Controller* con) : controller(con), count(0), countPulse(0) {
+        controller->clear();
+        controller->clear();
+        controller->print(1, 0, "Seconds: %d", count);
+    }
+    }
+
+
+    inline void tick() {
+    inline void tick() {
+        controller->print(1, 0, "Seconds: %d", ++count);
+        ++count;
+    }
+    inline void tickPulse() {
+        ++countPulse;
+    }
+    }
+
+
+    inline void periodic() override {
+    inline void periodic() override {
+        tick();
+        updateScreen();
+    }
+    }
+
+
+private:
+private:
+    scheduler::Controller* controller;
+    scheduler::Controller* controller;
+    int count;
+    uint16_t count;
+    uint16_t countPulse;
+    
+    inline void updateScreen() {
+        printf("Debug: count=%d, countPulse=%d\n", count, countPulse);
+        int result1 = controller->print(0, 0, "Seconds: %d", count);
+        int result2 = controller->print(1, 0, "Pulse: %d", countPulse);
+        printf("Print results: line0=%d, line1=%d\n", result1, result2);
+    }
+};
+};
+
+
+#endif
+#endif
+‎Test2025/command_test/src/main.cpp‎
++7-3Lines changed: 7 additions & 3 deletions
+Original file line number	Original file line	Diff line number	Diff line change
+@@ -13,7 +13,7 @@ ControllerScreenSubsystem* screenSub = new ControllerScreenSubsystem(&controller
+void configureBindings() {
+void configureBindings() {
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_LEFT, new Down(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_RIGHT, new Up(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub));
+    controller.setButtonCommand().onTrue(pros::E_CONTROLLER_DIGITAL_UP, new Pulse(motorSub, screenSub));
+    controller.setButtonCommand().onFalse(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub));
+    controller.setButtonCommand().onFalse(pros::E_CONTROLLER_DIGITAL_X, new MyTime(screenSub));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, 20, new InstantCommand([m = motorSub] { m->forward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); }));
+    controller.setJoystickCommand().onTrue(pros::E_CONTROLLER_ANALOG_RIGHT_Y, -20, new InstantCommand([m = motorSub] { m->backward(); }));
+@@ -81,16 +81,20 @@ void opcontrol() {
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+        pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Y: %3d", controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y));
+
+
+        controller.poll();                                                      // 1. Check all bindings and schedules commands as needed
+        controller.poll();                                                      // 1. Check all bindings and schedules commands as needed
+        
+        for (auto it = schedulerList->begin(); it != schedulerList->end();) {
+        for (auto it = schedulerList->begin(); it != schedulerList->end();) {
+            (*it)->execute();                                                   // 2. Run the command's main logic
+            (*it)->execute();                                                   // 2. Run the command's main logic
+            if ((*it)->isFinished()) {                                          // 3. Check if finished
+            if ((*it)->isFinished()) {                                          // 3. Check if finished
+                (*it)->end();                                                   // 4. Clean up if finished
+                (*it)->end();                                                   // 4. Clean up if finished
+                it = schedulerList->erase(it);                                  // Remove from scheduler
+                it = schedulerList->erase(it);                                  // Remove from scheduler
+            } else {
+            } else {
+                (*it)->periodic();                                              // 5. Optionally run periodic tasks
+                ++it;
+                ++it;
+            }
+            }
+        }
+        }
+        pros::delay(20);
+        
+        // Update all registered subsystems once per loop
+        controller.updateSubsystems();
+        pros::delay(30);
+    }
+    }
+};
+};
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.

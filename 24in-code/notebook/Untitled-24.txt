@@ -1,0 +1,114 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+1 commit
+2 files changed
+
+    1 contributor
+
+Commits on Sep 29, 2025
+
+    added TODO file
+    @IanRohrbacher
+    IanRohrbacher committed on Sep 29
+
+Showing
+with 31 additions and 5 deletions.
+24 changes: 24 additions & 0 deletions 24
+Offseason/example-code/TODO.md
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -0,0 +1,24 @@
+test everything;
+sub periodic
+controller binding
+command
+InstantCommand
+
+change how the main loop waits
+
+work on default command function
+
+work on drive command
+
+Add Command Groups:
+class SequentialCommandGroup : public CommandBase {
+    // Run commands one after another
+};
+class ParallelCommandGroup : public CommandBase {
+    // Run commands simultaneously
+};
+
+Add Command Decorators:
+CommandBase* withTimeout(double seconds);
+CommandBase* repeatedly();
+CommandBase* andThen(CommandBase* next);
+12 changes: 7 additions & 5 deletions 12
+Offseason/example-code/include/custom/scheduler.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -18,17 +18,19 @@ class Scheduler {
+    void cancelCommand(CommandBase* commandInstance);
+    void cancelCommand(CommandBase* commandInstance);
+    void registerSubsystemForPeriodic(SubsystemBase* subsystem);
+    void registerSubsystemForPeriodic(SubsystemBase* subsystem);
+    void run();
+    void run();
+    // Individual scheduler tick steps
+
+    void step1_runSubsystemPeriodicMethods();
+    void step2_pollCommandSchedulingTriggers();
+    void step3_runAndFinishScheduledCommands();
+    void step4_scheduleDefaultCommands();
+
+
+    std::size_t size() const;
+    std::size_t size() const;
+    std::size_t defaultSize() const;
+    std::size_t defaultSize() const;
+    bool empty() const;
+    bool empty() const;
+
+
+private:
+private:
+    // Individual scheduler tick steps
+    void step1_runSubsystemPeriodicMethods();
+    void step2_pollCommandSchedulingTriggers();
+    void step3_runAndFinishScheduledCommands();
+    void step4_scheduleDefaultCommands();
+
+    std::vector<std::unique_ptr<CommandBase>> queue;
+    std::vector<std::unique_ptr<CommandBase>> queue;
+    std::unordered_map<SubsystemBase*, CommandBase*> defaultCommands;
+    std::unordered_map<SubsystemBase*, CommandBase*> defaultCommands;
+    std::vector<SubsystemBase*> periodicSubsystems;
+    std::vector<SubsystemBase*> periodicSubsystems;
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

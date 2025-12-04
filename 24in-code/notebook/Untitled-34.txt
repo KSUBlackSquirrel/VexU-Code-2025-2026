@@ -1,0 +1,242 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+Comparing changes
+Choose two branches to see what’s changed or to start a new pull request. If you need to, you can also
+or learn more about diff comparisons.
+...
+
+4 commits
+3 files changed
+
+    2 contributors
+
+Commits on Oct 21, 2025
+
+    hi im philip and this is my super cool stuff ive been working on for … 
+
+@philiptarmelie
+philiptarmelie committed last month
+
+Fixed controller setting a pointer to scheduler
+@IanRohrbacher
+IanRohrbacher committed last month
+
+reverted a change
+@IanRohrbacher
+IanRohrbacher committed last month
+
+fixed reverted change
+@IanRohrbacher
+IanRohrbacher committed last month
+
+Showing
+with 21 additions and 22 deletions.
+5 changes: 3 additions & 2 deletions 5
+Offseason/example-code/include/custom/controller.h
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -36,12 +36,13 @@ class Controller : public pros::Controller {
+
+
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<ButtonBinder> m_buttonBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    std::vector<JoystickBinder> m_joystickBinders;
+    Scheduler* m_scheduler;
+
+
+private:
+    static Scheduler* m_globalScheduler;
+    static Scheduler* m_globalScheduler;
+    static std::vector<Controller*> m_pendingControllers;
+    static std::vector<Controller*> m_pendingControllers;
+
+private:
+    static void registerPendingControllers();
+    static void registerPendingControllers();
+
+};
+};
+
+
+enum class Edge { None, Rising, Falling, WhileTrue };
+enum class Edge { None, Rising, Falling, WhileTrue };
+30 changes: 14 additions & 16 deletions 30
+Offseason/example-code/src/custom/controller.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -2,16 +2,14 @@
+#include "custom/scheduler.h"
+#include "custom/scheduler.h"
+#include <vector>
+#include <vector>
+
+
+// Static members for backup registration
+// Static members for deferred registration
+Scheduler* Controller::m_globalScheduler = nullptr;
+Scheduler* Controller::m_globalScheduler = nullptr;
+std::vector<Controller*> Controller::m_pendingControllers;
+std::vector<Controller*> Controller::m_pendingControllers;
+
+
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
+// Controller constructor: initializes the controller, binds it to a scheduler, and auto-registers with the scheduler.
+Controller::Controller(pros::controller_id_e_t id)
+Controller::Controller(pros::controller_id_e_t id)
+    : pros::Controller(id) {
+    : pros::Controller(id) {
+    if (m_scheduler) {
+    if (m_globalScheduler != nullptr) {
+        m_scheduler->registerController(this);
+    } else if (m_globalScheduler) {
+        m_globalScheduler->registerController(this);
+        m_globalScheduler->registerController(this);
+    } else {
+    } else {
+        m_pendingControllers.push_back(this);
+        m_pendingControllers.push_back(this);
+@@ -89,18 +87,18 @@ ButtonBinder& ButtonBinder::whileTrue(const CommandBase* cmd) {
+void ButtonBinder::poll() {
+void ButtonBinder::poll() {
+    if (m_edge == Edge::Rising) {
+    if (m_edge == Edge::Rising) {
+        bool curr = m_controller->get_digital_new_press(m_button);
+        bool curr = m_controller->get_digital_new_press(m_button);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
+        if (curr && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
+    }
+    }
+    if (m_edge == Edge::Falling) {
+    if (m_edge == Edge::Falling) {
+        bool curr = m_controller->get_digital_new_release(m_button);
+        bool curr = m_controller->get_digital_new_release(m_button);
+        if (curr) m_controller->m_scheduler->schedule(km_command);
+        if (curr && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
+    }
+    }
+    if (m_edge == Edge::WhileTrue) {
+    if (m_edge == Edge::WhileTrue) {
+        bool curr = m_controller->get_digital(m_button);
+        bool curr = m_controller->get_digital(m_button);
+        if (curr && !m_runningCommand) {
+        if (curr && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+            m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
+        } else if (!curr && m_runningCommand) {
+        } else if (!curr && m_runningCommand && Controller::m_globalScheduler) {
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            Controller::m_globalScheduler->cancel(m_runningCommand);
+            m_runningCommand = nullptr;
+            m_runningCommand = nullptr;
+        }
+        }
+    }
+    }
+@@ -134,13 +132,13 @@ JoystickBinder& JoystickBinder::whileTrue(const CommandBase* cmd) {
+void JoystickBinder::poll() {
+void JoystickBinder::poll() {
+    int curr = m_controller->get_analog(m_stick);
+    int curr = m_controller->get_analog(m_stick);
+    bool above = (m_threshold >= 0) ? (curr >= m_threshold) : (curr <= m_threshold);
+    bool above = (m_threshold >= 0) ? (curr >= m_threshold) : (curr <= m_threshold);
+    if (m_edge == Edge::Rising && above && !m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (m_edge == Edge::Rising && above && !m_prev && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
+    if (m_edge == Edge::Falling && !above && m_prev) m_controller->m_scheduler->schedule(km_command);
+    if (m_edge == Edge::Falling && !above && m_prev && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
+    if (m_edge == Edge::WhileTrue) {
+    if (m_edge == Edge::WhileTrue) {
+        if (above && !m_runningCommand) {
+        if (above && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            m_runningCommand = m_controller->m_scheduler->schedule(km_command);
+            m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
+        } else if (!above && m_runningCommand) {
+        } else if (!above && m_runningCommand && Controller::m_globalScheduler) {
+            m_controller->m_scheduler->cancel(m_runningCommand);
+            Controller::m_globalScheduler->cancel(m_runningCommand);
+            m_runningCommand = nullptr;
+            m_runningCommand = nullptr;
+        }
+        }
+    }
+    }
+8 changes: 4 additions & 4 deletions 8
+Offseason/example-code/src/robot.cpp
+Original file line number 	Original file line 	Diff line number 	Diff line change
+@@ -1,6 +1,6 @@
+#include "main.h"
+#include "main.h"
+
+
+extern Controller controller(globalConst::drive::kMainControllerID);
+Controller controller(globalConst::drive::kMainControllerID);
+
+
+// Add Subsystems Here
+// Add Subsystems Here
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+@@ -11,12 +11,12 @@ std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forwa
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+
+
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+
+
+// Default commands
+// Default commands
+// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+
+
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+
+
+// Example command variations
+// Example command variations
+// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
+@@ -44,7 +44,7 @@ void configureBindings() {
+    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
+
+
+    // // Original Pulse command
+    // // Original Pulse command
+    // controller.X().onTrue(pulseCommand.get());
+    controller.X().onTrue(pulseCommand.get());
+
+
+    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
+    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
+    // controller.A().onTrue(timeoutCommand.get());
+    // controller.A().onTrue(timeoutCommand.get());
+Footer
+© 2025 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Community
+    Docs
+    Contact
+

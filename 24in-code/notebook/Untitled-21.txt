@@ -1,0 +1,1145 @@
+
+Skip to content
+Navigation Menu
+KSUBlackSquirrel
+VexU-Code-2025-2026
+
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+
+    Settings
+
+IanRohrbacher
+IanRohrbacher
+committed
+on Sep 20
+renamed root folder
+main
+
+1 parent 
+a5dc1f9
+ commit 1975175
+
+File tree
+
+Offseason/example-code
+
+.gitignore
+Makefile
+common.mk
+firmware
+
+LemLib.a
+hot-cold-asset.mk
+libc.a
+liblvgl.a
+libm.a
+libpros.a
+v5-common.ld
+v5-hot.ld
+
+    v5.ld
+
+include
+
+api.h
+custom
+
+command
+
+commandBase.h
+driveCommand.h
+exampleCommand.h
+
+    instantCommand.h
+
+controller.h
+globals.h
+scheduler.h
+subsystem
+
+driveSubsystem.h
+exampleSubsystem.h
+
+        subsystemBase.h
+
+fmt
+
+LICENSE
+args.h
+core.h
+format-inl.h
+
+    format.h
+
+lemlib
+
+api.hpp
+asset.hpp
+chassis
+
+chassis.hpp
+odom.hpp
+
+    trackingWheel.hpp
+
+driveCurve.hpp
+exitcondition.hpp
+logger
+
+baseSink.hpp
+buffer.hpp
+infoSink.hpp
+logger.hpp
+message.hpp
+stdout.hpp
+
+    telemetrySink.hpp
+
+pid.hpp
+pose.hpp
+timer.hpp
+
+    util.hpp
+
+liblvgl
+
+core
+
+lv_global.h
+lv_group.h
+lv_group_private.h
+lv_obj.h
+lv_obj_class.h
+lv_obj_class_private.h
+lv_obj_draw.h
+lv_obj_draw_private.h
+lv_obj_event.h
+lv_obj_event_private.h
+lv_obj_pos.h
+lv_obj_private.h
+lv_obj_property.h
+lv_obj_scroll.h
+lv_obj_scroll_private.h
+lv_obj_style.h
+lv_obj_style_gen.h
+lv_obj_style_private.h
+lv_obj_tree.h
+lv_refr.h
+
+    lv_refr_private.h
+
+display
+
+lv_display.h
+
+    lv_display_private.h
+
+draw
+
+dma2d
+
+lv_draw_dma2d.h
+
+    lv_draw_dma2d_private.h
+
+lv_draw.h
+lv_draw_arc.h
+lv_draw_buf.h
+lv_draw_buf_private.h
+lv_draw_image.h
+lv_draw_image_private.h
+lv_draw_label.h
+lv_draw_label_private.h
+lv_draw_line.h
+lv_draw_mask.h
+lv_draw_mask_private.h
+lv_draw_private.h
+lv_draw_rect.h
+lv_draw_rect_private.h
+lv_draw_triangle.h
+lv_draw_triangle_private.h
+lv_draw_vector.h
+lv_draw_vector_private.h
+lv_image_decoder.h
+lv_image_decoder_private.h
+lv_image_dsc.h
+nema_gfx
+
+lv_draw_nema_gfx.h
+
+    lv_draw_nema_gfx_utils.h
+
+nxp
+
+pxp
+
+lv_draw_pxp.h
+lv_pxp_cfg.h
+lv_pxp_osa.h
+
+    lv_pxp_utils.h
+
+vglite
+
+lv_draw_vglite.h
+lv_vglite_buf.h
+lv_vglite_matrix.h
+lv_vglite_path.h
+
+        lv_vglite_utils.h
+
+opengles
+
+    lv_draw_opengles.h
+
+renesas/dave2d
+
+lv_draw_dave2d.h
+
+    lv_draw_dave2d_utils.h
+
+sdl
+
+    lv_draw_sdl.h
+
+sw
+
+arm2d
+
+lv_draw_sw_arm2d.h
+
+    lv_draw_sw_helium.h
+
+blend
+
+arm2d
+
+    lv_blend_arm2d.h
+
+helium
+
+    lv_blend_helium.h
+
+lv_draw_sw_blend.h
+lv_draw_sw_blend_private.h
+lv_draw_sw_blend_to_al88.h
+lv_draw_sw_blend_to_argb8888.h
+lv_draw_sw_blend_to_i1.h
+lv_draw_sw_blend_to_l8.h
+lv_draw_sw_blend_to_rgb565.h
+lv_draw_sw_blend_to_rgb888.h
+neon
+
+        lv_blend_neon.h
+
+lv_draw_sw.h
+lv_draw_sw_gradient.h
+lv_draw_sw_gradient_private.h
+lv_draw_sw_mask.h
+lv_draw_sw_mask_private.h
+
+    lv_draw_sw_private.h
+
+vg_lite
+
+lv_draw_vg_lite.h
+lv_draw_vg_lite_type.h
+lv_vg_lite_decoder.h
+lv_vg_lite_grad.h
+lv_vg_lite_math.h
+lv_vg_lite_path.h
+lv_vg_lite_pending.h
+lv_vg_lite_stroke.h
+
+        lv_vg_lite_utils.h
+
+drivers
+
+README.md
+display
+
+drm
+
+    lv_linux_drm.h
+
+fb
+
+    lv_linux_fbdev.h
+
+ili9341
+
+    lv_ili9341.h
+
+lcd
+
+    lv_lcd_generic_mipi.h
+
+renesas_glcdc
+
+    lv_renesas_glcdc.h
+
+st7735
+
+    lv_st7735.h
+
+st7789
+
+    lv_st7789.h
+
+st7796
+
+    lv_st7796.h
+
+st_ltdc
+
+    lv_st_ltdc.h
+
+tft_espi
+
+lv_tft_espi.cpp
+
+        lv_tft_espi.h
+
+evdev
+
+    lv_evdev.h
+
+glfw
+
+lv_glfw_window.h
+lv_glfw_window_private.h
+lv_opengles_debug.h
+lv_opengles_driver.h
+
+    lv_opengles_texture.h
+
+libinput
+
+lv_libinput.h
+lv_libinput_private.h
+lv_xkb.h
+
+    lv_xkb_private.h
+
+lv_drivers.h
+nuttx
+
+lv_nuttx_cache.h
+lv_nuttx_entry.h
+lv_nuttx_fbdev.h
+lv_nuttx_image_cache.h
+lv_nuttx_lcd.h
+lv_nuttx_libuv.h
+lv_nuttx_profiler.h
+
+    lv_nuttx_touchscreen.h
+
+qnx
+
+    lv_qnx.h
+
+sdl
+
+lv_sdl_keyboard.h
+lv_sdl_mouse.h
+lv_sdl_mousewheel.h
+lv_sdl_private.h
+
+    lv_sdl_window.h
+
+wayland
+
+lv_wayland.h
+
+    lv_wayland_smm.h
+
+windows
+
+lv_windows_context.h
+lv_windows_display.h
+lv_windows_input.h
+
+    lv_windows_input_private.h
+
+x11
+
+        lv_x11.h
+
+font
+
+lv_binfont_loader.h
+lv_font.h
+lv_font_fmt_txt.h
+lv_font_fmt_txt_private.h
+
+    lv_symbol_def.h
+
+indev
+
+lv_indev.h
+lv_indev_private.h
+
+    lv_indev_scroll.h
+
+layouts
+
+flex
+
+    lv_flex.h
+
+grid
+
+    lv_grid.h
+
+lv_layout.h
+
+    lv_layout_private.h
+
+libs
+
+barcode
+
+code128.h
+lv_barcode.h
+
+    lv_barcode_private.h
+
+bin_decoder
+
+    lv_bin_decoder.h
+
+bmp
+
+    lv_bmp.h
+
+ffmpeg
+
+lv_ffmpeg.h
+
+    lv_ffmpeg_private.h
+
+freetype
+
+arial.ttf
+ftmodule.h
+ftoption.h
+lv_freetype.h
+
+    lv_freetype_private.h
+
+fsdrv
+
+lv_fs_arduino_esp_littlefs.cpp
+lv_fs_arduino_sd.cpp
+
+    lv_fsdrv.h
+
+gif
+
+gifdec.h
+gifdec_mve.h
+lv_gif.h
+
+    lv_gif_private.h
+
+libjpeg_turbo
+
+    lv_libjpeg_turbo.h
+
+libpng
+
+    lv_libpng.h
+
+lodepng
+
+lodepng.h
+
+    lv_lodepng.h
+
+lz4
+
+LICENSE
+
+    lz4.h
+
+qrcode
+
+lv_qrcode.h
+lv_qrcode_private.h
+
+    qrcodegen.h
+
+rle
+
+    lv_rle.h
+
+rlottie
+
+lv_rlottie.h
+
+    lv_rlottie_private.h
+
+svg
+
+lv_svg.h
+lv_svg_parser.h
+lv_svg_render.h
+
+    lv_svg_token.h
+
+thorvg
+
+add_lvgl_if.sh
+config.h
+rapidjson
+
+allocators.h
+cursorstreamwrapper.h
+document.h
+encodedstream.h
+encodings.h
+error
+
+en.h
+
+    error.h
+
+filereadstream.h
+filewritestream.h
+fwd.h
+internal
+
+biginteger.h
+clzll.h
+diyfp.h
+dtoa.h
+ieee754.h
+itoa.h
+meta.h
+pow10.h
+regex.h
+stack.h
+strfunc.h
+strtod.h
+
+    swap.h
+
+istreamwrapper.h
+memorybuffer.h
+memorystream.h
+msinttypes
+
+inttypes.h
+
+    stdint.h
+
+ostreamwrapper.h
+pointer.h
+prettywriter.h
+rapidjson.h
+reader.h
+schema.h
+stream.h
+stringbuffer.h
+uri.h
+
+    writer.h
+
+thorvg.h
+thorvg_capi.h
+thorvg_lottie.h
+tvgAccessor.cpp
+tvgAnimation.cpp
+tvgAnimation.h
+tvgArray.h
+tvgBinaryDesc.h
+tvgCanvas.cpp
+tvgCanvas.h
+tvgCapi.cpp
+tvgCommon.h
+tvgCompressor.cpp
+tvgCompressor.h
+tvgFill.cpp
+tvgFill.h
+tvgFrameModule.h
+tvgGlCanvas.cpp
+tvgInitializer.cpp
+tvgInlist.h
+tvgIteratorAccessor.h
+tvgLines.cpp
+tvgLines.h
+tvgLoadModule.h
+tvgLoader.cpp
+tvgLoader.h
+tvgLock.h
+tvgLottieAnimation.cpp
+tvgLottieBuilder.cpp
+tvgLottieBuilder.h
+tvgLottieExpressions.cpp
+tvgLottieExpressions.h
+tvgLottieInterpolator.cpp
+tvgLottieInterpolator.h
+tvgLottieLoader.cpp
+tvgLottieLoader.h
+tvgLottieModel.cpp
+tvgLottieModel.h
+tvgLottieParser.cpp
+tvgLottieParser.h
+tvgLottieParserHandler.cpp
+tvgLottieParserHandler.h
+tvgLottieProperty.h
+tvgMath.cpp
+tvgMath.h
+tvgPaint.cpp
+tvgPaint.h
+tvgPicture.cpp
+tvgPicture.h
+tvgRawLoader.cpp
+tvgRawLoader.h
+tvgRender.cpp
+tvgRender.h
+tvgSaveModule.h
+tvgSaver.cpp
+tvgScene.cpp
+tvgScene.h
+tvgShape.cpp
+tvgShape.h
+tvgStr.cpp
+tvgStr.h
+tvgSvgCssStyle.cpp
+tvgSvgCssStyle.h
+tvgSvgLoader.cpp
+tvgSvgLoader.h
+tvgSvgLoaderCommon.h
+tvgSvgPath.cpp
+tvgSvgPath.h
+tvgSvgSceneBuilder.cpp
+tvgSvgSceneBuilder.h
+tvgSvgUtil.cpp
+tvgSvgUtil.h
+tvgSwCanvas.cpp
+tvgSwCommon.h
+tvgSwFill.cpp
+tvgSwImage.cpp
+tvgSwMath.cpp
+tvgSwMemPool.cpp
+tvgSwRaster.cpp
+tvgSwRasterAvx.h
+tvgSwRasterC.h
+tvgSwRasterNeon.h
+tvgSwRasterTexmap.h
+tvgSwRenderer.cpp
+tvgSwRenderer.h
+tvgSwRle.cpp
+tvgSwShape.cpp
+tvgSwStroke.cpp
+tvgTaskScheduler.cpp
+tvgTaskScheduler.h
+tvgText.cpp
+tvgText.h
+tvgWgCanvas.cpp
+tvgXmlParser.cpp
+
+    tvgXmlParser.h
+
+tiny_ttf
+
+lv_tiny_ttf.h
+stb_rect_pack.h
+
+    stb_truetype_htcw.h
+
+tjpgd
+
+lv_tjpgd.h
+tjpgd.h
+
+        tjpgdcnf.h
+
+llemu.hpp
+llemu.h
+lv_api_map_v8.h
+lv_api_map_v9_0.h
+lv_api_map_v9_1.h
+lv_conf.h
+lv_conf.old.h
+lv_conf_internal.h
+lv_conf_kconfig.h
+lv_init.h
+lv_version.h
+lvgl.h
+lvgl_private.h
+misc
+
+cache
+
+lv_cache.h
+lv_cache_entry.h
+lv_cache_entry_private.h
+lv_cache_lru_rb.h
+lv_cache_private.h
+lv_image_cache.h
+
+    lv_image_header_cache.h
+
+lv_anim.h
+lv_anim_private.h
+lv_anim_timeline.h
+lv_area.h
+lv_area_private.h
+lv_array.h
+lv_assert.h
+lv_async.h
+lv_bidi.h
+lv_bidi_private.h
+lv_circle_buf.h
+lv_color.h
+lv_color_op.h
+lv_color_op_private.h
+lv_event.h
+lv_event_private.h
+lv_fs.h
+lv_fs_private.h
+lv_iter.h
+lv_ll.h
+lv_log.h
+lv_lru.h
+lv_math.h
+lv_matrix.h
+lv_palette.h
+lv_profiler.h
+lv_profiler_builtin.h
+lv_profiler_builtin_private.h
+lv_rb.h
+lv_rb_private.h
+lv_style.h
+lv_style_gen.h
+lv_style_private.h
+lv_templ.h
+lv_text.h
+lv_text_ap.h
+lv_text_private.h
+lv_timer.h
+lv_timer_private.h
+lv_tree.h
+lv_types.h
+
+    lv_utils.h
+
+osal
+
+lv_cmsis_rtos2.h
+lv_freertos.h
+lv_mqx.h
+lv_os.h
+lv_os_none.h
+lv_os_private.h
+lv_pthread.h
+lv_rtthread.h
+
+    lv_windows.h
+
+others
+
+file_explorer
+
+lv_file_explorer.h
+
+    lv_file_explorer_private.h
+
+font_manager
+
+lv_font_manager.h
+lv_font_manager_recycle.h
+
+    lv_font_manager_utils.h
+
+fragment
+
+README.md
+lv_fragment.h
+
+    lv_fragment_private.h
+
+gridnav
+
+    lv_gridnav.h
+
+ime
+
+lv_ime_pinyin.h
+
+    lv_ime_pinyin_private.h
+
+imgfont
+
+    lv_imgfont.h
+
+monkey
+
+lv_monkey.h
+
+    lv_monkey_private.h
+
+observer
+
+lv_observer.h
+
+    lv_observer_private.h
+
+snapshot
+
+    lv_snapshot.h
+
+sysmon
+
+lv_sysmon.h
+
+    lv_sysmon_private.h
+
+vg_lite_tvg
+
+vg_lite.h
+
+        vg_lite_tvg.cpp
+
+stdlib
+
+builtin
+
+lv_tlsf.h
+
+    lv_tlsf_private.h
+
+lv_mem.h
+lv_mem_private.h
+lv_sprintf.h
+
+    lv_string.h
+
+themes
+
+default
+
+    lv_theme_default.h
+
+lv_theme.h
+lv_theme_private.h
+mono
+
+    lv_theme_mono.h
+
+simple
+
+        lv_theme_simple.h
+
+tick
+
+lv_tick.h
+
+    lv_tick_private.h
+
+widgets
+
+animimage
+
+lv_animimage.h
+
+    lv_animimage_private.h
+
+arc
+
+lv_arc.h
+
+    lv_arc_private.h
+
+bar
+
+lv_bar.h
+
+    lv_bar_private.h
+
+buttonmatrix
+
+lv_buttonmatrix.h
+
+    lv_buttonmatrix_private.h
+
+button
+
+lv_button.h
+
+    lv_button_private.h
+
+calendar
+
+lv_calendar.h
+lv_calendar_chinese.h
+lv_calendar_chinese_private.h
+lv_calendar_header_arrow.h
+lv_calendar_header_dropdown.h
+
+    lv_calendar_private.h
+
+canvas
+
+lv_canvas.h
+
+    lv_canvas_private.h
+
+chart
+
+lv_chart.h
+
+    lv_chart_private.h
+
+checkbox
+
+lv_checkbox.h
+
+    lv_checkbox_private.h
+
+dropdown
+
+lv_dropdown.h
+
+    lv_dropdown_private.h
+
+imagebutton
+
+lv_imagebutton.h
+
+    lv_imagebutton_private.h
+
+image
+
+lv_image.h
+
+    lv_image_private.h
+
+keyboard
+
+lv_keyboard.h
+
+    lv_keyboard_private.h
+
+label
+
+lv_label.h
+
+    lv_label_private.h
+
+led
+
+lv_led.h
+
+    lv_led_private.h
+
+line
+
+lv_line.h
+
+    lv_line_private.h
+
+list
+
+    lv_list.h
+
+lottie
+
+lv_lottie.h
+
+    lv_lottie_private.h
+
+menu
+
+lv_menu.h
+
+    lv_menu_private.h
+
+msgbox
+
+lv_msgbox.h
+
+    lv_msgbox_private.h
+
+objx_templ
+
+    lv_objx_templ.h
+
+property
+
+lv_obj_property_names.h
+
+    lv_style_properties.h
+
+roller
+
+lv_roller.h
+
+    lv_roller_private.h
+
+scale
+
+lv_scale.h
+
+    lv_scale_private.h
+
+slider
+
+lv_slider.h
+
+    lv_slider_private.h
+
+span
+
+lv_span.h
+
+    lv_span_private.h
+
+spinbox
+
+lv_spinbox.h
+
+    lv_spinbox_private.h
+
+spinner
+
+    lv_spinner.h
+
+switch
+
+lv_switch.h
+
+    lv_switch_private.h
+
+table
+
+lv_table.h
+
+    lv_table_private.h
+
+tabview
+
+lv_tabview.h
+
+    lv_tabview_private.h
+
+textarea
+
+lv_textarea.h
+
+    lv_textarea_private.h
+
+tileview
+
+lv_tileview.h
+
+    lv_tileview_private.h
+
+win
+
+lv_win.h
+
+            lv_win_private.h
+
+main.h
+pros
+
+abstract_motor.hpp
+adi.hpp
+adi.h
+ai_vision.hpp
+ai_vision.h
+apix.h
+colors.hpp
+colors.h
+device.hpp
+device.h
+distance.hpp
+distance.h
+error.h
+ext_adi.h
+gps.hpp
+gps.h
+imu.hpp
+imu.h
+link.hpp
+link.h
+llemu.hpp
+llemu.h
+misc.hpp
+misc.h
+motor_group.hpp
+motors.hpp
+motors.h
+optical.hpp
+optical.h
+rotation.hpp
+rotation.h
+rtos.hpp
+rtos.h
+screen.hpp
+screen.h
+serial.hpp
+serial.h
+version.h
+vision.hpp
+
+        vision.h
+
+project.pros
+src
+
+controller.cpp
+main.cpp
+
+    scheduler.cpp
+
+static
+
+            example.txt
+
+Some content is hidden
+Large Commits have some content hidden by default. Use the searchbox below for content that may be hidden.
+587 files changed
++0
+-0
+lines changed
+ 
+‎Offseason/drive-test/.gitignore‎
+renamed to ‎Offseason/example-code/.gitignore‎
+File renamed without changes.
+‎Offseason/drive-test/Makefile‎
+renamed to ‎Offseason/example-code/Makefile‎
+File renamed without changes.
+‎Offseason/drive-test/common.mk‎
+renamed to ‎Offseason/example-code/common.mk‎
+File renamed without changes.
+‎Offseason/drive-test/firmware/LemLib.a‎
+renamed to ‎Offseason/example-code/firmware/LemLib.a‎
+File renamed without changes.
+‎Offseason/drive-test/firmware/hot-cold-asset.mk‎
+renamed to ‎Offseason/example-code/firmware/hot-cold-asset.mk‎
+File renamed without changes.
+‎Offseason/drive-test/firmware/libc.a‎
+renamed to ‎Offseason/example-code/firmware/libc.a‎
+File renamed without changes.
+‎Offseason/drive-test/firmware/liblvgl.a‎
+renamed to ‎Offseason/example-code/firmware/liblvgl.a‎
+File renamed without changes.
+‎Offseason/drive-test/firmware/libm.a‎
+renamed to ‎Offseason/example-code/firmware/libm.a‎
+File renamed without changes.
+0 commit comments
+Comments
+0 (0)
+
+You're not receiving notifications from this thread.
+300 files remain
