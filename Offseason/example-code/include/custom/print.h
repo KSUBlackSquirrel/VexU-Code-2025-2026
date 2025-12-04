@@ -16,8 +16,15 @@ inline void printf(const char* fmt, ...) {
     ::printf("%s", buf);
 }
 
+inline void clearScreen(int line) {
+    int y = line * 20;  // Approximate line height
+    pros::screen::set_eraser(pros::Color::black);
+    pros::screen::fill_rect(0, y, 480, y + 20);
+}
+
 // Print to the V5 screen at a specific line
 inline void screenPrint(int line, const char* fmt, ...) {
+    clearScreen(line);
     char buf[128];
     va_list args;
     va_start(args, fmt);

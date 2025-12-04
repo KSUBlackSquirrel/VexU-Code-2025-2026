@@ -11,6 +11,8 @@
 #include <typeinfo>
 #include <cstdlib>
 #include <initializer_list>
+#include <unordered_set>
+#include <cassert>
 #ifdef __GNUG__
     #include <cxxabi.h>
 #endif // __GNUG__
@@ -106,6 +108,7 @@ public:
     // Defined later at bottom of code
     std::unique_ptr<CommandBase> withTimeout(double timeoutSeconds);
     std::unique_ptr<CommandBase> withName(const std::string& name);
+    std::unique_ptr<CommandBase> andThen(const CommandBase* next);
 
     std::unique_ptr<CommandBase> withInterruptBehavior(InterruptionBehavior behavior) {
         auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
@@ -207,44 +210,47 @@ public:
     std::string getName() const override { return "Wait(" + std::to_string(m_duration) + "s)"; }
 };
 
-// RunFor command - executes action for specified number of cycles
+// RunFor command - executes action for specified duration in seconds
 class RunForCommand : public CommandBase {
 private:
     std::function<void()> m_action;
-    int m_cycles;
-    int m_currentCycle = 0;
+    double m_duration;
+    double m_startTime;
     
 public:
     RunForCommand(
         std::function<void()> action,
-        int cycles,
+        double seconds,
         std::initializer_list<SubsystemBase*> subsystems = {}
     ) : 
         m_action(action),
-        m_cycles(cycles)
+        m_duration(seconds),
+        m_startTime(0)
     {  for (auto* subsystem : subsystems) if (subsystem) addRequirements(subsystem); }
     RunForCommand(
         std::function<void()> action,
-        int cycles,
+        double seconds,
         SubsystemBase* subsystem
     ) :
-        RunForCommand(action, cycles, {subsystem})
+        RunForCommand(action, seconds, {subsystem})
     {}
     
-    void execute() override { 
-        m_action();
-        m_currentCycle++;
+    void initialize() override { m_startTime = pros::millis(); }
+    void execute() override { m_action(); }
+    bool isFinished() override {
+        double currentTime = pros::millis();
+        double elapsedTime = (currentTime - m_startTime) / 1000.0; // Convert to seconds
+        return elapsedTime >= m_duration;
     }
-    bool isFinished() override { return m_currentCycle >= m_cycles; }
     CommandBase* clone() const override { 
-        auto clone = new RunForCommand(m_action, m_cycles);
+        auto clone = new RunForCommand(m_action, m_duration);
         // Copy requirements
         for (auto* subsystem : getRequiredSubsystems()) {
             clone->addRequirements(subsystem);
         }
         return clone;
     }
-    std::string getName() const override { return "RunFor"; }
+    std::string getName() const override { return "RunFor(" + std::to_string(m_duration) + "s)"; }
 };
 
 // Command that accepts lambdas for all lifecycle methods
@@ -330,6 +336,245 @@ public:
 };
 
 // ============================================================================
+// COMMAND GROUPS
+// SequentialCommandGroup: runs commands one after another
+class SequentialCommandGroup : public CommandBase {
+private:
+    std::vector<std::unique_ptr<CommandBase>> m_commands;
+    size_t m_index = 0;
+
+    // Helper to add a single command
+    void addCommand(const CommandBase* cmd) {
+        if (!cmd) return;
+        auto cloned = std::unique_ptr<CommandBase>(cmd->clone());
+        cloned->setComposed(true);
+        for (auto* subsys : cloned->getRequiredSubsystems()) if (subsys) addRequirements(subsys);
+        m_commands.push_back(std::move(cloned));
+    }
+
+public:
+    // Variadic constructor - accepts any number of command pointers
+    template<typename... Commands>
+    SequentialCommandGroup(Commands*... commands) {
+        (addCommand(commands), ...);
+    }
+
+    // Construct from initializer list
+    SequentialCommandGroup(std::initializer_list<const CommandBase*> commands) {
+        for (const CommandBase* cmd : commands) addCommand(cmd);
+    }
+
+    // Construct from already-owned command clones
+    SequentialCommandGroup(std::vector<std::unique_ptr<CommandBase>>&& clones)
+        : m_commands(std::move(clones)) {
+        for (auto& c : m_commands) {
+            if (c) {
+                c->setComposed(true);
+                for (auto* subsys : c->getRequiredSubsystems()) if (subsys) addRequirements(subsys);
+            }
+        }
+    }
+
+    void initialize() override {
+        m_index = 0;
+        if (!m_commands.empty() && m_commands[0]) m_commands[0]->initialize();
+    }
+
+    void execute() override {
+        if (m_index >= m_commands.size()) return;
+        auto& cur = m_commands[m_index];
+        if (!cur) { m_index++; return; }
+        cur->execute();
+        if (cur->isFinished()) {
+            cur->end(false);
+            m_index++;
+            if (m_index < m_commands.size() && m_commands[m_index]) m_commands[m_index]->initialize();
+        }
+    }
+
+    void end(bool interrupted) override {
+        if (m_index < m_commands.size() && m_commands[m_index]) {
+            m_commands[m_index]->end(interrupted);
+        }
+        // for interrupted: call end(true) on remaining commands if desired
+        if (interrupted) {
+            for (size_t i = m_index + 1; i < m_commands.size(); ++i) {
+                if (m_commands[i]) m_commands[i]->end(true);
+            }
+        }
+    }
+
+    bool isFinished() override {
+        return m_index >= m_commands.size();
+    }
+
+    CommandBase* clone() const override {
+        std::vector<std::unique_ptr<CommandBase>> clones;
+        clones.reserve(m_commands.size());
+        for (const auto& c : m_commands) {
+            if (c) clones.emplace_back(c->clone());
+            else clones.emplace_back(nullptr);
+        }
+        return new SequentialCommandGroup(std::move(clones));
+    }
+
+    std::string getName() const override {
+        std::string name = "Sequential(";
+        for (size_t i = 0; i < m_commands.size(); ++i) {
+            if (i) name += ", ";
+            name += (m_commands[i] ? m_commands[i]->getName() : "<null>");
+        }
+        name += ")";
+        return name;
+    }
+};
+
+// ParallelCommandGroup: runs all commands at once; finishes when all complete
+class ParallelCommandGroup : public CommandBase {
+private:
+    std::vector<std::unique_ptr<CommandBase>> m_commands;
+
+    // Helper to add a single command
+    void addCommand(const CommandBase* cmd) {
+        if (!cmd) return;
+        auto cloned = std::unique_ptr<CommandBase>(cmd->clone());
+        cloned->setComposed(true);
+        
+        // Check for subsystem conflicts - multiple commands cannot require the same subsystem in parallel
+        for (auto* subsys : cloned->getRequiredSubsystems()) {
+            if (subsys) {
+                // Check if this subsystem is already required by another command in the group
+                for (const auto& existingCmd : m_commands) {
+                    if (existingCmd) {
+                        const auto& existingReqs = existingCmd->getRequiredSubsystems();
+                        for (auto* existingSubsys : existingReqs) {
+                            if (existingSubsys == subsys) {
+                                // FATAL: Commands share subsystem - will crash immediately!
+                                volatile int* crash = nullptr;
+                                *crash = 0;
+                            }
+                        }
+                    }
+                }
+                addRequirements(subsys);
+            }
+        }
+        m_commands.push_back(std::move(cloned));
+    }
+
+public:
+    // Variadic constructor - accepts any number of command pointers
+    template<typename... Commands>
+    ParallelCommandGroup(Commands*... commands) {
+        // Immediate check before any construction
+        const CommandBase* cmdArray[] = {commands...};
+        std::unordered_set<SubsystemBase*> allSubsystems;
+        
+        for (size_t i = 0; i < sizeof...(commands); ++i) {
+            if (cmdArray[i]) {
+                for (auto* subsys : cmdArray[i]->getRequiredSubsystems()) {
+                    if (subsys && !allSubsystems.insert(subsys).second) {
+                        // FATAL: Duplicate subsystem found - will crash immediately!
+                        volatile int* crash = nullptr;
+                        *crash = 0;
+                    }
+                }
+            }
+        }
+        
+        // Now add the commands
+        (addCommand(commands), ...);
+    }
+
+    // Construct from initializer list
+    ParallelCommandGroup(std::initializer_list<const CommandBase*> commands) {
+        // Check for subsystem conflicts before adding
+        std::unordered_set<SubsystemBase*> allSubsystems;
+        for (const CommandBase* cmd : commands) {
+            if (cmd) {
+                for (auto* subsys : cmd->getRequiredSubsystems()) {
+                    if (subsys && !allSubsystems.insert(subsys).second) {
+                        // FATAL: Duplicate subsystem found - will crash immediately!
+                        volatile int* crash = nullptr;
+                        *crash = 0;
+                    }
+                }
+            }
+        }
+        
+        // Now add the commands
+        for (const CommandBase* cmd : commands) addCommand(cmd);
+    }
+
+    // Construct from already-owned command clones
+    ParallelCommandGroup(std::vector<std::unique_ptr<CommandBase>>&& clones)
+        : m_commands(std::move(clones)) {
+        // Check for subsystem conflicts in pre-cloned commands
+        std::unordered_set<SubsystemBase*> seenSubsystems;
+        for (auto& c : m_commands) {
+            if (c) {
+                c->setComposed(true);
+                for (auto* subsys : c->getRequiredSubsystems()) {
+                    if (subsys) {
+                        if (!seenSubsystems.insert(subsys).second) {
+                            // FATAL: Duplicate subsystem found - will crash immediately!
+                            volatile int* crash = nullptr;
+                            *crash = 0;
+                        }
+                        addRequirements(subsys);
+                    }
+                }
+            }
+        }
+    }
+
+    void initialize() override {
+        for (auto& c : m_commands) if (c) c->initialize();
+    }
+
+    void execute() override {
+        for (auto& c : m_commands) {
+            if (!c) continue;
+            if (!c->isFinished()) {
+                c->execute();
+                if (c->isFinished()) {
+                    c->end(false);
+                }
+            }
+        }
+    }
+
+    void end(bool interrupted) override {
+        for (auto& c : m_commands) if (c) c->end(interrupted);
+    }
+
+    bool isFinished() override {
+        for (auto& c : m_commands) if (c && !c->isFinished()) return false;
+        return true;
+    }
+
+    CommandBase* clone() const override {
+        std::vector<std::unique_ptr<CommandBase>> clones;
+        clones.reserve(m_commands.size());
+        for (const auto& c : m_commands) {
+            if (c) clones.emplace_back(c->clone()); else clones.emplace_back(nullptr);
+        }
+        return new ParallelCommandGroup(std::move(clones));
+    }
+
+    std::string getName() const override {
+        std::string name = "Parallel(";
+        for (size_t i = 0; i < m_commands.size(); ++i) {
+            if (i) name += ", ";
+            name += (m_commands[i] ? m_commands[i]->getName() : "<null>");
+        }
+        name += ")";
+        return name;
+    }
+};
+
+
+// ============================================================================
 // COMMAND DECORATOR IMPLEMENTATIONS (after class definitions)
 // ============================================================================
 
@@ -341,6 +586,15 @@ inline std::unique_ptr<CommandBase> CommandBase::withTimeout(double timeoutSecon
 inline std::unique_ptr<CommandBase> CommandBase::withName(const std::string& name) {
     auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
     return std::unique_ptr<CommandBase>(new NamedCommand(std::move(clonedCommand), name));
+}
+
+inline std::unique_ptr<CommandBase> CommandBase::andThen(const CommandBase* next) {
+    // Create clones of both commands and wrap into a SequentialCommandGroup
+    std::vector<std::unique_ptr<CommandBase>> clones;
+    clones.emplace_back(this->clone());
+    if (next) clones.emplace_back(next->clone());
+    auto group = std::unique_ptr<CommandBase>(new SequentialCommandGroup(std::move(clones)));
+    return group;
 }
 
 #endif // COMMANDBASE_H_
