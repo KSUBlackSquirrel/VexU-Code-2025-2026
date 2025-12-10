@@ -96,10 +96,19 @@ void ButtonBinder::poll() {
     if (m_edge == Edge::WhileTrue) {
         bool curr = m_controller->get_digital(m_button);
         if (curr && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            // Button is pressed and no command is running - schedule it
             m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
         } else if (!curr && m_runningCommand && Controller::m_globalScheduler) {
-            Controller::m_globalScheduler->cancel(m_runningCommand);
+            // Button released and command is running - cancel it
+            if (Controller::m_globalScheduler->isScheduled(m_runningCommand)) {
+                Controller::m_globalScheduler->cancel(m_runningCommand);
+            }
             m_runningCommand = nullptr;
+        } else if (curr && m_runningCommand && Controller::m_globalScheduler) {
+            // Button still held - check if command finished on its own
+            if (!Controller::m_globalScheduler->isScheduled(m_runningCommand)) {
+                m_runningCommand = nullptr;
+            }
         }
     }
 }
@@ -136,10 +145,19 @@ void JoystickBinder::poll() {
     if (m_edge == Edge::Falling && !above && m_prev && Controller::m_globalScheduler && km_command) Controller::m_globalScheduler->schedule(km_command);
     if (m_edge == Edge::WhileTrue) {
         if (above && !m_runningCommand && Controller::m_globalScheduler && km_command) {
+            // Joystick above threshold and no command running - schedule it
             m_runningCommand = Controller::m_globalScheduler->schedule(km_command);
         } else if (!above && m_runningCommand && Controller::m_globalScheduler) {
-            Controller::m_globalScheduler->cancel(m_runningCommand);
+            // Joystick below threshold and command running - cancel it
+            if (Controller::m_globalScheduler->isScheduled(m_runningCommand)) {
+                Controller::m_globalScheduler->cancel(m_runningCommand);
+            }
             m_runningCommand = nullptr;
+        } else if (above && m_runningCommand && Controller::m_globalScheduler) {
+            // Joystick still above threshold - check if command finished on its own
+            if (!Controller::m_globalScheduler->isScheduled(m_runningCommand)) {
+                m_runningCommand = nullptr;
+            }
         }
     }
     m_prev = above;

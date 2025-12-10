@@ -40,8 +40,14 @@ const static int kHorizontalDrift = 2;
 
 const static int kIMUid = 5;
 
-const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_BRAKE;
+// const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_BRAKE;
+const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_COAST;
 } // namespace drive vars
+
+namespace intake {
+    const static std::vector<std::int8_t> kMotorsID = {-19, 20};
+    const static pros::v5::MotorGears kMotorColor = pros::MotorGearset::blue;
+}
 
 } // all global consts
 

@@ -324,6 +324,9 @@ void Scheduler::run() {
     // ========================================================================
     // STEP 2: POLL COMMAND SCHEDULING TRIGGERS
     // ========================================================================
+    // Clear run loop flag before polling so button commands get proper clone pointers
+    m_inRunLoop = false;
+    
     // Poll all registered controllers for button presses and trigger events
     // Controllers will schedule new commands based on button bindings
     for (Controller* ctrl : m_controllers) {
@@ -331,9 +334,15 @@ void Scheduler::run() {
     }
     m_watchdog.addEpoch("controllers.poll()");
     
+    // Re-enable run loop flag for command execution
+    m_inRunLoop = true;
+    
     // ========================================================================
     // STEP 3: RUN/FINISH SCHEDULED COMMANDS
     // ========================================================================
+    // Re-enable run loop flag to defer scheduling during command execution
+    m_inRunLoop = true;
+    
     // Execute all currently scheduled commands and handle their lifecycle:
     // - Check robot state compatibility
     // - Execute command logic
