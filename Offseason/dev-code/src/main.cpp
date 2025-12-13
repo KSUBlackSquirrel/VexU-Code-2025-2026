@@ -59,9 +59,9 @@ void initialize() {
     Scheduler::getInstance().setRobotEnabled(false);
     Scheduler::getInstance().enable();
     
-    configureBindings();
-
     robotInit();
+    
+    configureBindings();
 }
 
 /**
