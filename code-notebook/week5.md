@@ -5,7 +5,7 @@ Today's Goals:
 Today's Tasks:
 	We are solving one of our major architectural challenges: preventing multiple commands from fighting over the same subsystem. Currently, if two commands both try to control the motor subsystem, they'll conflict and cause unpredictable behavior.
 	
-	**The Problem - Subsystem Conflicts:**
+	The Problem - Subsystem Conflicts:
 	Imagine this scenario:
 	1. User presses UP button → "DriveForward" command starts, motors spin forward
 	2. User presses DOWN button → "DriveBackward" command starts
@@ -14,10 +14,10 @@ Today's Tasks:
 	
 	We need a system where the scheduler can automatically detect these conflicts and safely stop the old command before starting the new one.
 	
-	**The Solution - Subsystem Requirements:**
+	The Solution - Subsystem Requirements:
 	We implemented an `addRequirements()` system that lets commands declare which subsystems they need exclusive access to.
 	
-	**Updated CommandBase.h:**
+	Updated CommandBase.h:
 	
 ```cpp
 // commandBase.h - Added subsystem requirements tracking
@@ -47,7 +47,7 @@ public:
 };
 ```
 	
-	**Updated Command Implementation:**
+	Updated Command Implementation:
 	Now every command can declare its requirements in the constructor:
 	
 ```cpp
@@ -84,7 +84,7 @@ public:
 };
 ```
 	
-	**Enhanced Scheduler Logic:**
+	Enhanced Scheduler Logic:
 	We updated the scheduler to check for subsystem conflicts before starting commands:
 	
 ```cpp
@@ -116,7 +116,7 @@ void scheduleCommand(CommandBase* cmd) {
 }
 ```
 	
-	**What Happens in Practice:**
+	What Happens in Practice:
 	1. User presses UP button → Starts "Up" command requiring ExampleSubsystem
 	2. Up runs happily, spinning motor forward
 	3. User presses DOWN button → Tries to start "Down" command (also requires ExampleSubsystem)
@@ -139,7 +139,7 @@ Today's Goals:
 Today's Tasks:
 	We are conducting comprehensive testing of the subsystem requirements system to verify it works correctly under various conditions. To make sure we can verify the test we needed to add some kinda of logging during the scheduler.
 
-    **Debug Logging:**
+    Debug Logging:
 	We added comprehensive logging to track command lifecycle:
 	
 ```cpp
@@ -161,13 +161,13 @@ void scheduleCommand(CommandBase* cmd) {
 	
 	This logging helped us identify and fix several edge cases during testing.
 	
-	**Test Case 1: Simple Interruption**
+	Test Case 1: Simple Interruption
 	- Start Up command (forward)
 	- Start Down command (backward)
 	- Expected: Up interrupted cleanly, Down takes over
 	- Result: PASS - Motor transitions smoothly, no conflicts
 	
-	**Test Case 2: Multiple Subsystems**
+	Test Case 2: Multiple Subsystems
 	We created a command that requires TWO subsystems to test multi-subsystem conflicts:
 	
 ```cpp
@@ -190,12 +190,12 @@ public:
 	- Expected: Both previous commands interrupted
 	- Result: PASS - Both interrupted correctly
 	
-	**Test Case 3: Rapid Button Presses**
+	Test Case 3: Rapid Button Presses
 	- Rapidly press UP, DOWN, UP, DOWN buttons
 	- Expected: Each command interrupts previous, no crashes or memory leaks
 	- Result: PASS - System handles rapid changes smoothly
 	
-	**Test Case 4: Interrupt During Initialize**
+	Test Case 4: Interrupt During Initialize
 	- Command A starts, initialize() called
 	- Command B scheduled before A's execute() runs
 	- Expected: A's end() still called even though execute() never ran
@@ -212,9 +212,9 @@ Today's Goals:
 Today's Tasks:
 	We are creating comprehensive documentation and best practices for the subsystem requirements system.
 	
-	**Command Writing Guidelines:**
+	Command Writing Guidelines:
 	
-	**Guideline 1: Declare Requirements for Exclusive Subsystem Access**
+	Guideline 1: Declare Requirements for Exclusive Subsystem Access
 	
 	If your command needs exclusive control of a subsystem (most commands do), declare it in the constructor:
 	
@@ -249,7 +249,7 @@ public:
 };
 ```
 	
-	**Guideline 2: Stop Hardware in end() When Needed**
+	Guideline 2: Stop Hardware in end() When Needed
 	
 	If your command controls motors or actuators, always stop them in end():
 	
@@ -276,7 +276,7 @@ class SetTargetPosition : public CommandBase {
 };
 ```
 	
-	**Guideline 3: Use interrupted Parameter for Different Cleanup**
+	Guideline 3: Use interrupted Parameter for Different Cleanup
 	
 ```cpp
 void end(bool interrupted) override {
@@ -294,9 +294,9 @@ void end(bool interrupted) override {
 }
 ```
 	
-	**Common Patterns:**
+	Common Patterns:
 	
-	**Pattern: Default Command**
+	Pattern: Default Command
 	
 	Default commands provide default behavior when a subsystem is idle. They MUST declare requirements and are automatically interrupted:
 	
@@ -317,43 +317,7 @@ public:
     }
 };
 ```
-	
-	**Pattern: Parallel Helper Command**
-	
-	Commands that run alongside others without conflicts don't need requirements:
-	
-```cpp
-// Runs in parallel - no subsystem conflicts
-class LEDStatusCommand : public CommandBase {
-public:
-    LEDStatusCommand() {
-        // No requirements - doesn't control any subsystems
-        // Can run alongside any other command
-    }
-    
-    void execute() override {
-        // Update LEDs based on robot state
-        updateLEDs();
-    }
-};
-```
-	
-	**Pattern: Command Groups**
-	
-	Commands that compose other commands inherit their requirements automatically:
-	
-```cpp
-// Sequential group - requirements come from composed commands
-SequentialCommandGroup autoRoutine({
-    new DriveForward(driveSubsystem),   // Requires drive
-    new Turn90(driveSubsystem),          // Requires drive
-    new RunIntake(intakeSubsystem)      // Requires intake
-});
-// Group automatically requires both drive AND intake subsystems
-```
 
 Reflection:
 	We completed comprehensive documentation for the subsystem requirements system. The guidelines and examples will help future team members write commands correctly and avoid common pitfalls. The pattern library covers the most frequent use cases we've encountered. This documentation, combined with our example commands, provides everything needed to use the requirements system effectively. The subsystem conflict resolution system is now fully documented and ready for widespread use throughout the codebase.
 
-**[PHOTO NEEDED: Documentation page showing rules with good/bad code examples side by side]**
-**[PHOTO NEEDED: Pattern library reference card for quick lookup]**

@@ -1,11 +1,11 @@
 10/07/2025
 Today's Goals:
-	Ian, Antonio, and Philip will be debugging a frustrating issue with controller screen printing where multiple lines fail to display properly.
+	Ian, Antonio, and Philip will be continuing to add debugging information to the controller screen to help monitor robot behavior during testing.
 
 Today's Tasks:
-	We are trying to add more detailed debugging information to the controller screen. We want to display multiple values like seconds elapsed and pulse count, but we're running into issues.
+	We are trying to add more detailed debugging information to the controller screen. We want to display multiple values like seconds elapsed and pulse count, but we ran into a issue where multiple lines fail to display properly.
 	
-	**The Problem:**
+	The Problem:
 	We tried to print multiple lines to the controller screen:
 	
 ```cpp
@@ -18,20 +18,20 @@ controller->print(1, 0, "Pulse: %d", countPulse);  // This line doesn't appear!
 ```
 	
 	Expected output on controller:
-	```
-	Seconds: 5
-	Pulse: 3
-	```
+	-------------
+	|Seconds: 5	|
+	|Pulse: 3	|
+	-------------
 	
 	Actual output on controller:
-	```
-	Seconds: 5
-	(line 1 is blank!)
-	```
+	-------------
+	|Seconds: 5	|
+	|			|
+	-------------
 	
 	Only the first line appears! The second `print()` call seems to be completely ignored.
 	
-	**Initial Investigation:**
+	Initial Investigation:
 	We added debug code to track print failures:
 	
 ```cpp
@@ -49,15 +49,15 @@ printf("Print results: line0=%d, line1=%d\n", result1, result2);
 	
 	`result2` is returning a huge garbage number (2147483647), which suggests the API call is failing completely. But why?
 	
-	**Reaching Out for Help:**
+	Reaching Out for Help:
 	After several hours of being stuck, we reached out to the LemLib Discord community. A team member from 781X (Andrew) explained something we didn't know about the controller:
 	
-	**The Root Cause - Message Queue:**
+	The Root Cause - Message Queue:
 	
 	The VEX V5 controller has a message queue system:
-	- Messages to the controller (prints, rumble) are sent every **50ms**
-	- Only **one message** can be queued at a time
-	- If you try to send a message while one is already queued, **the new message is dropped**
+	- Messages to the controller (prints, rumble) are sent every 50ms
+	- Only one message can be queued at a time
+	- If you try to send a message while one is already queued, the new message is dropped
 	
 	So when we call:
 	```cpp
@@ -67,7 +67,7 @@ printf("Print results: line0=%d, line1=%d\n", result1, result2);
 	
 	The first print gets queued, but the second print happens microseconds later while the first is still waiting to be sent, so it gets discarded!
 	
-	**Trying to Fix It - First Attempt:**
+	Trying to Fix It - First Attempt:
 	Andrew suggested adding delays between prints:
 	
 ```cpp
@@ -94,8 +94,8 @@ printf("Print results: line0=%d, line1=%d\n", result1, result2);
 	
 	It's better, but still failing sometimes! Even with the 50ms delay, we occasionally get failures. We tried increasing to 100ms, 150ms, 200ms - still occasionally fails!
 	
-	**The Real Solution:**
-	Andrew mentioned we need delays **after both prints**:
+	The Real Solution:
+	Andrew mentioned we need delays after both prints:
 	
 ```cpp
 // FINALLY WORKS!
@@ -109,138 +109,108 @@ pros::delay(50);  // Wait for second message to send before doing anything else
 	
 	Also, we switched from `int` to `bool` for the return type - PROS returns 1 for success (which becomes `true`), not 0.
 	
-	**Understanding the 50ms Wait:**
+	Understanding the 50ms Wait:
 	The controller processes messages at 20Hz (20 times per second):
 	- 1000ms / 20 = 50ms per message
 	- Waiting 50ms guarantees the message has been sent before we queue the next one
 
 Reflection:
-	After hours of debugging and help from the community, we finally understand the controller's message queue system! The problem wasn't our code logic - it was not understanding the hardware limitation. This discovery led us to create a custom print handler that manages the message queue automatically with proper timing between prints. This taught us an important lesson: sometimes bugs aren't in your code, they're in your understanding of the hardware. Reaching out to the LemLib community saved us from days of frustration. We're grateful to Andrew from 781X for explaining how the controller message queue actually works.
-
-**[PHOTO NEEDED: Terminal output showing debug prints with line0=2147483647, line1=1 failures]**
-**[PHOTO NEEDED: Diagram showing message queue: Print 1 → Queue (50ms) → Send → Print 2 → Queue (50ms) → Send]**
-
-**[PHOTO NEEDED: Before/after screenshots of controller display showing missing line vs complete output]**
-**[PHOTO NEEDED: Diagram showing message queue system with timing: Print 1 → Queue → 50ms delay → Send → Print 2 → Queue → Send]**
+	After hours of debugging and help from the community, we finally understand the controller's message queue system! This discovery has led us to create a custom print handler that manages the message queue automatically. Reaching out to the LemLib community saved us from days of frustration. We're grateful to Andrew from 781X for explaining how the controller message queue actually works.
 
 
 10/08/2025
 Today's Goals:
-	Ian, Antonio, and Philip will be creating a custom print handler to manage controller screen printing automatically.
+	Ian, Antonio, and Philip will be creating custom print utilities to make printing more reliable and easier to use.
 
 Today's Tasks:
-	We are building a robust controller screen subsystem that handles message queue timing automatically, so developers don't need to manually add delays.
+	Instead of having developers manually manage delays between controller prints, we decided to create utility functions in our `customPrint` namespace. We also realized we should differentiate between the V5 brain screen and the controller screen.
 	
-	**Improved Error Handling:**
-	We added better error detection and recovery:
+	The Solution - Custom Print Utilities:
+	
+	We created a `print.h` header with utility functions for different types of printing:
 	
 ```cpp
-class ControllerScreenSubsystem : public SubsystemBase {
-private:
-    Controller* m_controller;
-    std::vector<std::string> m_lineBuffer;  // Track what should be on each line
-    uint32_t m_lastPrintTime = 0;            // Track when we last printed
-    
-public:
-    void safeprint(int line, const char* format, ...) {
-        // Ensure minimum 50ms between prints
-        uint32_t now = pros::millis();
-        uint32_t timeSinceLastPrint = now - m_lastPrintTime;
-        
-        if (timeSinceLastPrint < 50) {
-            // Not enough time has passed - wait
-            pros::delay(50 - timeSinceLastPrint);
-        }
-        
-        // Format the string
-        char buffer[128];
+// print.h
+namespace customPrint {
+    // Print to console (serial / RTT)
+    inline void printf(const char* fmt, ...) {
+        char buf[256];
         va_list args;
-        va_start(args, format);
-        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
         va_end(args);
-        
-        // Attempt to print
-        bool success = m_controller->print(line, 0, "%s", buffer);
-        m_lastPrintTime = pros::millis();
-        
-        if (success) {
-            // Update our buffer to track what's displayed
-            if (line >= m_lineBuffer.size()) {
-                m_lineBuffer.resize(line + 1);
-            }
-            m_lineBuffer[line] = buffer;
-        } else {
-            // Print failed - log error
-            customPrint::printf("ERROR: Controller print failed for line %d: %s\n", 
-                              line, buffer);
-        }
-        
-        // Always delay after print
-        pros::delay(50);
+        ::printf("%s", buf);
     }
     
-    // Convenience method to print multiple lines safely
-    void printLines(const std::vector<std::string>& lines) {
-        for (size_t i = 0; i < lines.size(); i++) {
-            safeprint(i, "%s", lines[i].c_str());
-        }
+    // Clear a line on the V5 brain screen
+    inline void clearScreen(int line) {
+        int y = line * 20;  // Approximate line height
+        pros::screen::set_eraser(pros::Color::black);
+        pros::screen::fill_rect(0, y, 480, y + 20);
     }
-};
-```
-	
-	**Periodic Screen Refresh:**
-	We implemented periodic refreshing to recover from any missed updates:
-	
-```cpp
-void periodic() override {
-    // Every 1 second, refresh all lines to ensure consistency
-    static uint32_t lastRefresh = 0;
-    uint32_t now = pros::millis();
     
-    if (now - lastRefresh > 1000) {  // 1 second
-        // Re-send all buffered lines
-        for (size_t i = 0; i < m_lineBuffer.size(); i++) {
-            if (!m_lineBuffer[i].empty()) {
-                m_controller->print(i, 0, "%s", m_lineBuffer[i].c_str());
-                pros::delay(50);
-            }
-        }
-        lastRefresh = now;
+    // Print to the V5 brain screen at a specific line
+    inline void screenPrint(int line, const char* fmt, ...) {
+        clearScreen(line);  // Clear the line first to prevent overlap
+        char buf[128];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        pros::screen::print(pros::E_TEXT_MEDIUM, line, "%s", buf);
     }
 }
 ```
 	
-	**Testing Different Scenarios:**
-	We tested the improved system under various conditions:
+	Key Features:
 	
-	**Test 1: Rapid Updates**
-	- Update 3 lines in quick succession
-	- Result: ✅ All lines display correctly with automatic delays
+	1. printf() - Console printing with proper formatting
+	   - Formats the string in a buffer first
+	   - Sends to terminal/serial output
+	   - Useful for debugging that doesn't affect robot performance
 	
-	**Test 2: Competition Interference**
-	- Simulate field control messages (competition start/stop)
-	- Result: ✅ Periodic refresh recovers any lost messages
+	2. clearScreen() - Clears a specific line on the V5 brain screen
+	   - Calculates Y position based on line number
+	   - Draws black rectangle to erase old text
+	   - Prevents text overlap from previous prints
 	
-	**Test 3: Battery Brownout**
-	- Simulate low battery conditions
-	- Result: ✅ Failed prints logged, system remains stable
+	3. screenPrint() - Prints to V5 brain screen with automatic clearing
+	   - Clears the line first (prevents ghosting)
+	   - Formats the string
+	   - Prints to the specified line
 	
-	**Usage Example:**
+	Why This Works:
+	
+	The V5 brain screen doesn't have the same message queue limitations as the controller! We realized we were mixing up two different problems:
+	- Controller screen - Has strict message queue (50ms between prints required)
+	- Brain screen - No message queue, but text overlaps if not cleared first
+	
+	Our utility solves the brain screen problem by clearing before printing. For controller prints, we just need to remember to add delays manually when needed, since controller prints are less frequent in our code.
+	
+	Usage Examples:
 	
 ```cpp
-// In robot.cpp teleop
-void robotTeleop() {
-    static ControllerScreenSubsystem controllerScreen(&controller);
-    
-    // Safe, automatic timing
-    controllerScreen.safeprint(0, "Battery: %.1fV", pros::battery::get_voltage() / 1000.0);
-    controllerScreen.safeprint(1, "Temp: %dC", motor.get_temperature());
-    controllerScreen.safeprint(2, "Commands: %d", scheduler.size());
-}
+// Console debugging
+customPrint::printf("Motor temp: %d\n", motor.get_temperature());
+
+// Brain screen display - automatically clears line first
+customPrint::screenPrint(0, "Battery: %.1fV", pros::battery::get_voltage() / 1000.0);
+customPrint::screenPrint(1, "Temp: %dC", motor.get_temperature());
+customPrint::screenPrint(2, "Time: %d", pros::millis());
+
+// No overlap, clean display!
 ```
+	
+	Testing Results:
+	
+	- Brain screen displays multiple lines clearly without overlap
+	- Printf to console works for debugging
+	- Simple API - just call the function, no manual clearing needed
+	- Works consistently across all our projects
 
 Reflection:
-	We created a custom print handler that solves the controller screen printing issues completely! This custom handler manages the message queue timing automatically with `safeprint()`, so developers can print multiple lines without worrying about the 50ms delay requirement. The automatic timing enforcement prevents message queue conflicts, error handling helps debug issues, and periodic refresh ensures the display stays consistent even if messages are lost. The custom handler is now production-ready and abstracts away the hardware limitations. This week taught us the importance of understanding hardware limitations and building robust abstractions that hide complexity from the developer. Sometimes the solution isn't obvious - it took weeks and community help to fully understand the problem, but now we have a solid, reliable custom handler.
+	We created custom print utilities that solve our printing issues! The key insight was realizing we were conflating two different problems: controller message queue limitations and brain screen text overlap. By creating separate utilities for each use case, we have clean, reliable printing throughout our codebase. The `clearScreen()` function before printing prevents text ghosting, and the inline functions keep overhead minimal. 
+	
+	After this experience, we decided that the brain screen and serial output are more reliable than the controller screen for debugging purposes. The controller's message queue limitations make it less suitable for displaying real-time debug information. For now, we'll focus on using the brain screen and console output for debugging. We have plans to revisit the controller screen implementation later if we need driver-facing information, but for development and testing, the brain screen utilities work great.
 
-**[PHOTO NEEDED: Code showing improved ControllerScreenSubsystem with automatic timing and error handling]**
-**[PHOTO NEEDED: Controller screen showing clean, stable display during testing]**
+**[PHOTO NEEDED: Brain screen showing clean multi-line display without text overlap]**

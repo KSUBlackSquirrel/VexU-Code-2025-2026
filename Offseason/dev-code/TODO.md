@@ -42,3 +42,6 @@ watchdog.h
 ### custom documentation for examples
 exampleCommand.h
 exampleSubsystem.h
+
+## debugging tools
+the controller brain cant currently be printed to because of the 50ms queuing issue
