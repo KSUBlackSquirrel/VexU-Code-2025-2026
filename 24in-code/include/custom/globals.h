@@ -45,8 +45,11 @@ const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_COAST;
 } // namespace drive vars
 
 namespace intake {
-    const static std::vector<std::int8_t> kMotorsID = {-19, 20};
-    const static pros::v5::MotorGears kMotorColor = pros::MotorGearset::blue;
+    const static std::vector<std::int8_t> kIntakeMotorsID = {-19, 20};
+    const static pros::v5::MotorGears kIntakeMotorColor = pros::MotorGearset::blue;
+
+    const static std::vector<std::int8_t> kOuttakeMotorsID = {-13, 14};
+    const static pros::v5::MotorGears kOuttakeMotorColor = pros::MotorGearset::blue;
 }
 
 } // all global consts

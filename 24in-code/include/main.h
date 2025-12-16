@@ -56,6 +56,7 @@
 #include "custom/command/runIntakeCommand.h"
 #include "custom/command/runOuttakeCommand.h"
 #include "custom/subsystem/intakeSubsystem.h"
+#include "custom/subsystem/outtakeSubsystem.h"
 
 
 

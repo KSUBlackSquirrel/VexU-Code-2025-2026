@@ -10,13 +10,14 @@ class SubsystemBase;
 
 class IntakeCommand: public CommandBase {
 public:
-    IntakeCommand(IntakeSubsystem* sub) { 
+    IntakeCommand(IntakeSubsystem* sub, bool reverse=false) { 
         m_subsystem = sub;
+        m_reverse = reverse;
         addRequirements(m_subsystem);
     }
 
     inline void execute() override {
-        m_subsystem->runIn();
+        m_subsystem->run(m_reverse);
     }
 
     inline void end(bool interrupted) override {
@@ -31,6 +32,7 @@ public:
 
 private:
     IntakeSubsystem* m_subsystem;
+    bool m_reverse;
 };
 
 #endif // INTAKECOMMAND_H_

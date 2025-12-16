@@ -2,7 +2,7 @@
 #define OUTTAKECOMMAND_H_
 
 #include "commandBase.h"
-#include "custom/subsystem/intakeSubsystem.h"
+#include "custom/subsystem/outtakeSubsystem.h"
 #include "custom/controller.h"
 #include "custom/globals.h"
 
@@ -10,13 +10,14 @@ class SubsystemBase;
 
 class OuttakeCommand: public CommandBase {
 public:
-    OuttakeCommand(IntakeSubsystem* sub) { 
+    OuttakeCommand(OuttakeSubsystem* sub, bool reverse=false) { 
         m_subsystem = sub;
+        m_reverse = reverse;
         addRequirements(m_subsystem);
     }
 
     inline void execute() override {
-        m_subsystem->runOut();
+        m_subsystem->run(m_reverse);
     }
 
     inline void end(bool interrupted) override {
@@ -30,7 +31,8 @@ public:
     }
 
 private:
-    IntakeSubsystem* m_subsystem;
+    OuttakeSubsystem* m_subsystem;
+    bool m_reverse;
 };
 
 #endif // OUTTAKECOMMAND_H_

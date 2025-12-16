@@ -8,33 +8,20 @@
 class IntakeSubsystem : public SubsystemBase {
     public:
         IntakeSubsystem() :
-            // m_motorOne(globalConst::intake::kMotorsID[0], globalConst::intake::kMotorColor),
-            // m_motorTwo(globalConst::intake::kMotorsID[1], globalConst::intake::kMotorColor)
-            m_motor(globalConst::intake::kMotorsID, globalConst::intake::kMotorColor)
+            m_intakeMotor(globalConst::intake::kIntakeMotorsID, globalConst::intake::kIntakeMotorColor)
         {
-            m_motor.set_brake_mode_all(globalConst::drive::kBreakMode);
+            m_intakeMotor.set_brake_mode_all(globalConst::drive::kBreakMode);
         }
 
-        inline void runIn() {
-            m_motor.move(globalConst::MotorTools::percentToVelocity(100, globalConst::intake::kMotorColor));
-            // m_motorOne.move(globalConst::MotorTools::percentToVelocity(100, globalConst::intake::kMotorColor));
-            // m_motorTwo.move(globalConst::MotorTools::percentToVelocity(100, globalConst::intake::kMotorColor));
-        }
-        inline void runOut() {
-            m_motor.move(globalConst::MotorTools::percentToVelocity(-100, globalConst::intake::kMotorColor));
-            // m_motorOne.move(globalConst::MotorTools::percentToVelocity(-100, globalConst::intake::kMotorColor));
-            // m_motorTwo.move(globalConst::MotorTools::percentToVelocity(-100, globalConst::intake::kMotorColor));
+        inline void run(bool reverse=false) {
+            m_intakeMotor.move(globalConst::MotorTools::percentToVelocity(reverse ? -100:100, globalConst::intake::kIntakeMotorColor));
         }
         inline void stop() {
-            m_motor.brake();
-            // m_motorOne.brake();
-            // m_motorTwo.brake();
+            m_intakeMotor.brake();
         }
 
     private:
-        pros::MotorGroup m_motor;
-        // pros::Motor m_motorOne;
-        // pros::Motor m_motorTwo;
+        pros::MotorGroup m_intakeMotor;
 };
 
 #endif // INTAKESUBSYSTEM_H_
