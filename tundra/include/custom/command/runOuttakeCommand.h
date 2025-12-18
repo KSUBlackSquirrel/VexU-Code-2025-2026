@@ -1,5 +1,4 @@
-#ifndef OUTTAKECOMMAND_H_
-#define OUTTAKECOMMAND_H_
+#pragma once
 
 #include "commandBase.h"
 #include "custom/subsystem/outtakeSubsystem.h"
@@ -34,5 +33,3 @@ private:
     OuttakeSubsystem* m_subsystem;
     bool m_reverse;
 };
-
-#endif // OUTTAKECOMMAND_H_

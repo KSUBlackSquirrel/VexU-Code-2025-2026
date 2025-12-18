@@ -1,97 +1,115 @@
-﻿12/11/2025
+12/02/2025
 Today's Goals:
-Ian, Antonio, and Philip will be testing and refining the intake/outtake subsystems in practice.
+Ian, Antonio, and Philip will be implementing command groups to enable complex autonomous routines.
 
 Today's Tasks:
-We are testing the newly implemented intake and outtake subsystems on the actual robot. Making sure the bindings work correctly and motors respond as expected.
+We are adding command groups (sequential and parallel) to make complex autonomous routines easier by composing simple commands together.
 
-**Testing Process:**
+Why Command Groups?
 
-1. Verified motor directions - both intake and outtake spin correct directions
-2. Tested reverse functionality - both can run backwards to clear jams
-3. Confirmed whileTrue() works correctly after bug fix
-4. Checked that motors stop immediately when buttons released
+In FRC, WPILib provides command groups that allow teams to build complex autonomous routines by composing simple commands. This pattern has proven incredibly successful in competition robotics because:
+- Complex routines are built from tested, simple commands
+- Code is more readable and maintainable
+- Autonomous sequences can be modified without rewriting everything
+- Teams can share and reuse command sequences
 
-**Example Testing Code:**
+We're implementing the same pattern for VEX, following FRC's proven approach.
 
+SequentialCommandGroup:
+
+Runs commands one after another:
 ```cpp
-// Testing intake direction
-controller.R1().whileTrue(intakeForwardCommand.get());  // Collect game pieces
-controller.R2().whileTrue(intakeBackwardCommand.get()); // Eject/clear jams
-
-// Testing outtake direction  
-controller.L1().whileTrue(outtakeForwardCommand.get());  // Score game pieces
-controller.L2().whileTrue(outtakeBackwardCommand.get()); // Reverse to clear
+// Run command1, then when it finishes, run command2, then command3
+auto sequence = std::make_unique<SequentialCommandGroup>(
+    std::vector<CommandBase*>{&driveForward, &turn90, &intakeGamePiece}
+);
 ```
 
-**Motor Configuration:**
+Use cases:
+- Autonomous routines (drive to position, then score, then return)
+- Multi-step mechanisms (extend arm, close claw, retract arm)
+- Any operation that requires steps in specific order
 
+ParallelCommandGroup:
+
+Runs multiple commands at the same time:
 ```cpp
-// In globals.h - Motor speed constants
-namespace intake {
-    constexpr int kIntakeSpeed = 100;  // Full speed for intake
-    constexpr int kOuttakeSpeed = 100; // Full speed for outtake
-}
+// Run drive and intake at the same time
+auto parallel = std::make_unique<ParallelCommandGroup>(
+    std::vector<CommandBase*>{&driveToGoal, &runIntake}
+);
 ```
 
-**Minor Adjustments:**
+Important: Just like in FRC, commands in parallel group cannot use the same subsystem. The scheduler checks this at runtime and will error if there's a conflict. This prevents dangerous situations where two commands try to control the same motor simultaneously.
 
-- Tuned motor speeds for optimal game piece handling
-- Adjusted brake modes for better control
-- Verified no conflicts between intake and outtake (separate subsystems work great)
+Implementation Details:
 
-Reflection:
-Intake and outtake subsystems are working perfectly on the robot! The separate subsystem design was the right choice - we can run both simultaneously without conflicts. The whileTrue() bug fix from Dec 9 made everything reliable. Ready for competition practice.
+Both command groups inherit from CommandBase, so they can be used anywhere a command is expected. They properly handle requirements by aggregating all requirements from their child commands, ensuring the scheduler knows which subsystems are in use.
 
-**[PHOTO NEEDED: Team testing intake/outtake on practice field]**
-
-
-12/13/2025
-Today's Goals:
-Ian, Antonio, and Philip will be synchronizing the codebase across all three project folders.
-
-Today's Tasks:
-We are moving files around and updating all three project codebases (dev-code, template-code, 24in-code) to match. This ensures scheduler, controller, and main files are consistent across projects.
-
-**What We Synchronized:**
-
-- scheduler.cpp and scheduler.h (including whileTrue bug fix)
-- controller.cpp and controller.h  
-- main.cpp structure
-- Command and subsystem base classes
-
-**Key Files Updated Across All Projects:**
+The implementation follows FRC's lifecycle pattern exactly:
 
 ```cpp
-// scheduler.cpp - whileTrue() bug fix synchronized
-void Scheduler::step2_pollCommandSchedulingTriggers() {
-    m_inRunLoop = false;  // Critical fix - clear BEFORE polling
-    pollControllerBindings();
-    m_inRunLoop = true;
-}
-```
-
-```cpp
-// controller.h - Button binding methods
-class ControllerButton {
+class SequentialCommandGroup : public CommandBase {
+private:
+    std::vector<CommandBase*> m_commands;
+    size_t m_currentIndex = 0;
+    
 public:
-    void whileTrue(CommandBase* command);   // Run while button held
-    void onTrue(CommandBase* command);      // Run once on press
-    void onFalse(CommandBase* command);     // Run once on release
+    void initialize() override {
+        m_currentIndex = 0;
+        if (!m_commands.empty()) {
+            m_commands[0]->initialize();  // Start first command
+        }
+    }
+    
+    void execute() override {
+        if (m_currentIndex < m_commands.size()) {
+            m_commands[m_currentIndex]->execute();
+            
+            // Check if current command finished
+            if (m_commands[m_currentIndex]->isFinished()) {
+                m_commands[m_currentIndex]->end(false);
+                m_currentIndex++;
+                
+                // Start next command if available
+                if (m_currentIndex < m_commands.size()) {
+                    m_commands[m_currentIndex]->initialize();
+                }
+            }
+        }
+    }
+    
+    bool isFinished() override {
+        return m_currentIndex >= m_commands.size();
+    }
 };
 ```
 
-**Synchronization Process:**
+This matches FRC's approach: each command runs through its full lifecycle (initialize → execute loop → end) before the next command begins.
 
-1. Started with dev-code as the reference (most up-to-date)
-2. Copied core framework files to template-code
-3. Copied core framework files to 24in-code
-4. Verified compilation in all three projects
-5. Tested that robot-specific code still works correctly
+andThen() Decorator:
 
-This is maintenance work but important - keeps all projects up to date with bug fixes and improvements.
+Added chaining commands, this is a direct port of FRC's andThen() method:
+
+```cpp
+// Instead of:
+SequentialCommandGroup group({&cmd1, &cmd2, &cmd3});
+
+// You can write (just like in FRC):
+cmd1.andThen(&cmd2).andThen(&cmd3);
+```
+
+This decorator pattern is widely used in FRC code and makes sequential composition much more readable.
 
 Reflection:
-Successfully synchronized all three codebases. Now dev-code, template-code, and 24in-code all have the latest framework improvements and bug fixes. This will prevent confusion when switching between projects. Good practice to keep codebases in sync periodically.
+Major milestone achieved! We can now build complex autonomous routines by combining simple commands. By following FRC's proven patterns, we're building on years of competitive robotics experience rather than reinventing the wheel. The sequential group walks through commands one at a time, while the parallel group manages multiple commands simultaneously (with proper subsystem conflict checking). The andThen() decorator makes sequential composition even cleaner. These building blocks will make our autonomous programming much more intuitive and maintainable.
 
-**[PHOTO NEEDED: File comparison showing synchronized code]**
+**[PHOTO NEEDED: SequentialCommandGroup diagram showing commands running in sequence]**
+**[PHOTO NEEDED: ParallelCommandGroup diagram showing commands running simultaneously]**
+
+
+12/03/2025
+
+12/06/2025
+
+

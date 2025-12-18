@@ -1,98 +1,145 @@
 ﻿10/21/2025
 Today's Goals:
-Ian, Antonio, and Philip will be reorganizing the codebase to improve structure and fix controller-related bugs.
+    Ian, Antonio, and Philip will be fixing critical architectural issues with the controller-scheduler relationship and preparing to implement production robot code.
 
 Today's Tasks:
-We are moving core source files into a `custom` directory to organize our framework better. This separates our code from PROS/LemLib code.
+    We discovered and fixed a major architectural flaw in how the controller and scheduler interact. This became critical as we started implementing actual robot subsystems (intake, outtake) for competition.
 
-**Directory Reorganization:**
+The Problem - Controller Dependency Issue:
 
-We moved all framework files into `custom/` subdirectories:
-- src/custom/ for implementation files
-- include/custom/ for headers
+    The controller had a member variable `Scheduler* m_scheduler` that created a circular dependency:
+    - Controller needed scheduler pointer to schedule commands from button presses
+    - Scheduler needed controller pointer to poll for button inputs
+    - When constructing global objects, the initialization order caused crashes
 
-This makes includes clearer:
 ```cpp
-#include "custom/scheduler.h"   // Our code
-#include "pros/motors.hpp"      // PROS library
+// OLD BROKEN APPROACH:
+class Controller {
+    Scheduler* m_scheduler;  // Each controller has its own scheduler pointer
+};
+
+// In robot.cpp - CRASH! Controller constructed before scheduler exists
+Controller controller(MASTER);  
+Scheduler scheduler;
 ```
 
-**Controller Bug Fix:**
+The Solution - Static Global Scheduler Reference:
 
-Fixed a bug where controller had a pointer to the scheduler. The scheduler should poll the controller, not vice versa. This follows better dependency flow and single responsibility principle.
+Changed from instance member to static class member, using deferred registration pattern:
 
-Reflection:
-Successfully reorganized the codebase. Code is now better organized with clear separation between our framework and external libraries. The controller/scheduler dependency issue is fixed, improving maintainability.
-
-**[PHOTO NEEDED: Directory structure showing custom/ folder organization]**
-
-
-10/25/2025
-Today's Goals:
-Ian, Antonio, and Philip will be fixing button binding behavior for PulseCommand.
-
-Today's Tasks:
-We discovered that PulseCommand (300ms timeout test command) wasn't restarting properly when bound to buttons with `whileTrue()`.
-
-**The Problem:**
-
-After PulseCommand finished naturally via isFinished(), pressing the button again didn't restart it. The binding still thought the command was scheduled even though the scheduler had removed it.
-
-**The Fix:**
-
-Updated `whileTrue()` to check with the scheduler if the command is actually still running:
 ```cpp
-if (!m_runningCommand || !scheduler.isScheduled(m_runningCommand)) {
-    m_runningCommand = scheduler.schedule(m_command);
+// NEW WORKING APPROACH:
+class Controller {
+    static Scheduler* m_globalScheduler;  // Shared global reference
+    static std::vector<Controller*> m_pendingControllers;  // Queue for early controllers
+};
+
+// In robot.cpp - Controllers queue themselves
+Controller controller(MASTER);  // Adds self to pending list
+
+// In main.cpp initialize() - Registers all pending controllers
+void initialize() {
+    SubsystemBase::setScheduler(&Scheduler::getInstance());
+    Controller::setScheduler(&Scheduler::getInstance());  // Registers pending controllers
+    
+    robotInit();
+    configureBindings();
 }
 ```
 
-Now bindings verify command state with the scheduler instead of trusting their own tracking.
+Key Changes:
+1. Removed `m_scheduler` instance member from Controller
+2. Added static `m_globalScheduler` shared by all controllers
+3. Added `m_pendingControllers` vector to queue controllers created before scheduler
+4. Controller constructor checks if scheduler exists, otherwise queues itself
+5. `Controller::setScheduler(&Scheduler::getInstance())` in initialize() registers all pending controllers
+6. Uses singleton pattern `Scheduler::getInstance()` instead of global scheduler variable
+
+This allows controllers to be constructed as globals safely, with registration happening in initialize() when `Controller::setScheduler()` is called with the singleton scheduler instance.
+
+Moving Files to custom/ Directory:
+
+Also cleaned up project structure by moving implementation files:
+- `src/controller.cpp` → `src/custom/controller.cpp`
+- `src/scheduler.cpp` → `src/custom/scheduler.cpp`  
+- `src/subsystemBase.cpp` → `src/custom/subsystemBase.cpp`
+
+This mirrors the include structure and clearly separates our framework from PROS/LemLib code.
 
 Reflection:
-Fixed the button binding issue! PulseCommand now restarts correctly on repeated button presses. The key insight: bindings must verify command state with scheduler, not just track local pointers. This makes the framework more robust for commands that finish naturally.
-
-**[PHOTO NEEDED: Terminal showing PulseCommand restarting successfully]**
+This was a critical architectural fix that unblocked us from writing real robot code. The circular dependency between controller and scheduler was causing initialization crashes. By switching to a static global scheduler reference with deferred registration, we solved the global object initialization order problem elegantly. Controllers can now be declared globally and will automatically register themselves when the scheduler is created, regardless of construction order. This pattern is essential for our framework to work reliably across different robot projects.
 
 
-11/01/2025
+
+10/22/2025
 Today's Goals:
-Ian, Antonio, and Philip will be implementing proper cleanup in command end() methods and testing RunUntil patterns.
+Ian, Antonio, and Philip will be applying the same deferred registration pattern to subsystems to complete the auto-registration architecture.
 
 Today's Tasks:
-Ensuring commands properly clean up via end() method. Also testing RunUntil command that runs until a condition becomes true.
+After successfully fixing the controller registration issue yesterday, we realized subsystems have the same problem. Subsystems also need to register with the scheduler, and they're also constructed as globals. We need to apply the same solution.
 
-**Implementing end() Methods:**
+Subsystem Auto-Registration:
 
-Every command needs cleanup when finishing:
+Applied the exact same pattern we used for controllers to subsystems:
+
 ```cpp
-void end(bool interrupted) override {
-    m_subsystem->setMotorSpeed(0);  // Stop motors
+// SubsystemBase with auto-registration
+class SubsystemBase {
+    static Scheduler* m_globalScheduler;  // Shared global reference
+    static std::vector<SubsystemBase*> m_pendingSubsystems;  // Queue for early subsystems
     
-    if (interrupted) {
-        fmt::print("Command interrupted\n");
+public:
+    SubsystemBase();  // Constructor adds to pending list
+    static void setScheduler(Scheduler* sch);  // Registers all pending
+    static void registerPendingSubsystems();
+};
+
+// In subsystemBase.cpp
+SubsystemBase::SubsystemBase() {
+    if (m_globalScheduler != nullptr) {
+        m_globalScheduler->registerSubsystem(this);
+    } else {
+        m_pendingSubsystems.push_back(this);
     }
 }
 ```
 
-**RunUntil Command Pattern:**
+Complete initialize() Setup:
 
-Implemented command that runs until a lambda condition returns true:
+Now both controllers and subsystems auto-register:
+
 ```cpp
-// Run until sensor threshold
-RunUntilCommand(&sub, []() {
-    return pros::sensor.get() > threshold;
-});
+// In main.cpp initialize() - Framework setup
+void initialize() {
+    // Register all globally constructed subsystems and controllers
+    SubsystemBase::setScheduler(&Scheduler::getInstance());
+    Controller::setScheduler(&Scheduler::getInstance());
 
-// Run for 2 seconds  
-uint32_t start = pros::millis();
-RunUntilCommand(&sub, [start]() {
-    return (pros::millis() - start) > 2000;
-});
+    ...
+    
+    robotInit();        // User initialization
+    configureBindings(); // Setup button bindings
+}
 ```
 
-Reflection:
-Successfully implemented proper end() methods across test commands. RunUntil pattern is very useful - lets us create condition-based commands without new classes. The end(bool interrupted) parameter gives us two behaviors: normal completion vs emergency stop.
+Why This Matters:
 
-**[PHOTO NEEDED: ExampleCommand with end() method]**
-**[PHOTO NEEDED: Terminal showing "finished normally" vs "interrupted"]**
+This completes our framework's initialization architecture:
+1. Construction Phase: Subsystems and controllers constructed as globals, queue themselves
+2. Registration Phase: `initialize()` calls `setScheduler()`, all pending objects register
+3. Operation Phase: Scheduler can now poll controllers and update subsystems
+
+This means users can write:
+```cpp
+// In robot.cpp - All of these auto-register!
+Controller controller(MASTER);
+std::unique_ptr<DriveSubsystem> driveSub = std::make_unique<DriveSubsystem>();
+std::unique_ptr<IntakeSubsystem> intakeSub = std::make_unique<IntakeSubsystem>();
+```
+
+No manual `scheduler.register()` calls needed - the framework handles it automatically.
+
+Reflection:
+Completed the auto-registration architecture for both controllers and subsystems. This makes the framework much more user-friendly - subsystems and controllers automatically register themselves without requiring manual setup code. The deferred registration pattern also solves the C++ global object initialization order problem. Both subsystems and controllers work identically now, making the framework consistent and predictable.
+
+**[PHOTO NEEDED: Complete initialize() sequence showing both auto-registrations]**

@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "tuntra",
+    "project_name": "Tundra",
     "target": "v5",
     "templates": {
       "LemLib": {
