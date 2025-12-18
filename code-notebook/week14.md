@@ -78,7 +78,6 @@ public:
     void whileTrue(CommandBase* command);   // Run while button held
     void onTrue(CommandBase* command);      // Run once on press
     void onFalse(CommandBase* command);     // Run once on release
-    void toggleOnTrue(CommandBase* command); // Toggle on/off each press
 };
 ```
 
