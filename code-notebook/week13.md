@@ -5,7 +5,7 @@ Today's Goals:
 Today's Tasks:
 	We are enhancing the framework's structure to make it easier for team members to add new commands and subsystems.
 	
-	**Template Files:**
+	Template Files:
 	
 	We created template files that show the standard structure for new commands and subsystems:
 	
@@ -163,7 +163,7 @@ public:
 };
 ```
 	
-	**Directory Structure Guide:**
+	Directory Structure Guide:
 	
 ```markdown
 # Command Framework Directory Structure
@@ -218,103 +218,91 @@ Today's Goals:
 Today's Tasks:
 	We are establishing coding standards to ensure all team members write consistent, maintainable code.
 	
-	**Command Best Practices:**
+	Command Best Practices:
 	
 ```markdown
 # Command Framework Best Practices
 
 ## Command Design
 
-### 1. Always Require Subsystems
-Every command that uses a subsystem MUST call addRequirements():
+### 1. Require Subsystems When Controlling Physical Components
+Commands should call addRequirements() when they control physical outputs like motors or pneumatics:
 
 ```cpp
-// ✅ CORRECT
+// CORRECT - Command controls motors, needs exclusive access
 MyCommand(MySubsystem* sub) : m_subsystem(sub) {
-    addRequirements(sub);  // Required!
+    addRequirements(sub);  // Required - prevents multiple commands controlling same motors
 }
 
-// ❌ WRONG - Scheduler doesn't know this command uses the subsystem
-MyCommand(MySubsystem* sub) : m_subsystem(sub) {
-    // Missing addRequirements()!
+// ALSO OK - Command only reads sensors, no physical control
+SensorMonitorCommand(MySubsystem* sub) : m_subsystem(sub) {
+    // No addRequirements() - only reading sensor data, not controlling anything
 }
 ```
 
-**Why:** The scheduler uses requirements to prevent command conflicts. Without addRequirements(), multiple commands can fight for control of the same subsystem.
+Why: The scheduler uses requirements to prevent multiple commands from fighting for control of the same physical hardware (motors, pneumatics, etc.). Reading sensors doesn't require exclusive access, but controlling motors does. Without addRequirements(), multiple commands could send conflicting signals to the same motors simultaneously, causing unpredictable behavior.
 
 ### 2. Initialize in initialize(), Not Constructor
 Set initial state in initialize(), not the constructor:
 
 ```cpp
-// ✅ CORRECT
+// CORRECT
 void initialize() override {
     m_timer.reset();      // Reset each time command starts
     m_subsystem->reset(); // Reset subsystem state
 }
 
-// ❌ WRONG - Constructor only runs once when command is created
+// WRONG - Constructor only runs once when command is created
 MyCommand() {
     m_timer.reset();  // This only happens once, not each time command runs!
 }
 ```
 
-**Why:** Commands can be reused. The constructor runs once when created, but initialize() runs each time the command is scheduled.
+Why: Commands can be reused. The constructor runs once when created, but initialize() runs each time the command is scheduled.
 
-### 3. Clean Up in end()
-Always stop motors in end():
+### 3. Clean Up in end() (Best Practice)
+Always stop motors in end() for safety and predictability:
 
 ```cpp
-// ✅ CORRECT
+// BEST PRACTICE - Explicit cleanup
 void end(bool interrupted) override {
     m_subsystem->stop();  // Always stop, whether interrupted or finished normally
 }
 
-// ❌ WRONG - Motors keep running after command ends
+// WORKS BUT RISKY - Relies on default command or next command to clean up
 void end(bool interrupted) override {
-    // No cleanup - motors still moving!
+    // No explicit cleanup - motors keep state until something else changes them
 }
 ```
 
-**Why:** Commands can be interrupted at any time. Always clean up properly to avoid runaway motors.
+Why: While not strictly required (the next command or default command will control the motors), explicit cleanup in end() is best practice. It makes command behavior predictable, prevents motors from running in unexpected states between commands, and serves as a safety measure if something goes wrong with command scheduling.
 
-### 4. Use isFinished() for Temporary Commands
-Commands that should run until a condition is met:
+### 4. Use isFinished() Appropriately
+Different command types need different isFinished() behavior:
 
 ```cpp
-// ✅ CORRECT - Command ends when goal is reached
-bool isFinished() override {
-    return m_subsystem->atGoal();
-}
-
-// ✅ CORRECT - Command ends after timeout
+// CORRECT - Command with timeout ends naturally
 bool isFinished() override {
     return m_timer.elapsed() > 2000;  // End after 2 seconds
 }
 
-// ❌ WRONG for buttons - Command never ends
+// CORRECT - Command ends when goal reached
 bool isFinished() override {
-    return false;  // This is only correct for default commands!
+    return m_subsystem->atGoal();
+}
+
+// ALSO CORRECT - whileTrue() command runs until button released
+bool isFinished() override {
+    return false;  // Never ends on its own, waits for button release
+}
+
+// CORRECT - Default command runs forever until interrupted
+bool isFinished() override {
+    return false;  // Never ends, runs until another command needs subsystem
 }
 ```
 
-**Why:** Commands bound to buttons with onTrue() should end naturally. Commands that never end prevent other commands from running.
-
-### 5. Default Commands Never End
-Commands set as defaults should run forever:
-
-```cpp
-// ✅ CORRECT for default commands
-bool isFinished() override {
-    return false;  // Never ends, runs until interrupted
-}
-
-// ❌ WRONG for default commands
-bool isFinished() override {
-    return true;  // Ends immediately, defeats the purpose!
-}
-```
-
-**Why:** Default commands run when no other command needs the subsystem. They should continue until interrupted.
+Why: Commands bound with whileTrue() can return false (they'll be cancelled when button is released). Commands bound with onTrue() should have a finish condition so they don't run forever. Default commands should return false. However, it's best practice to give every non-default, non-whileTrue() command a finish condition (timeout, goal reached, sensor threshold, etc.) to prevent commands from accidentally running forever if something goes wrong.
 
 ## Subsystem Design
 
@@ -322,7 +310,7 @@ bool isFinished() override {
 Subsystems should NOT access the controller directly:
 
 ```cpp
-// ❌ WRONG - Subsystem shouldn't know about controller
+// WRONG - Subsystem shouldn't know about controller
 class DriveSubsystem {
     void update() {
         int speed = controller.get_analog(LEFT_Y);  // BAD!
@@ -330,7 +318,7 @@ class DriveSubsystem {
     }
 };
 
-// ✅ CORRECT - Command handles controller, subsystem does action
+// CORRECT - Command handles controller, subsystem does action
 class DriveSubsystem {
     void setSpeed(int speed) {
         m_motor.move(speed);
@@ -345,20 +333,20 @@ class DriveCommand {
 };
 ```
 
-**Why:** This keeps subsystems reusable. The same subsystem can be controlled by buttons, autonomous routines, or test scripts without changes.
+Why: This keeps subsystems reusable. The same subsystem can be controlled by buttons, autonomous routines, or test scripts without changes.
 
 ### 2. Keep Subsystem Methods Simple
 Each method should do one clear thing:
 
 ```cpp
-// ✅ CORRECT - Simple, clear methods
+// CORRECT - Simple, clear methods
 class IntakeSubsystem {
     void intake() { m_motor.move(127); }
     void outtake() { m_motor.move(-127); }
     void stop() { m_motor.move(0); }
 };
 
-// ❌ WRONG - Method does too many things
+// WRONG - Method does too many things
 class IntakeSubsystem {
     void run(bool intaking, bool outtaking) {
         if (intaking && !outtaking) {
@@ -372,7 +360,7 @@ class IntakeSubsystem {
 };
 ```
 
-**Why:** Simple methods are easier to understand, test, and reuse.
+Why: Simple methods are easier to understand, test, and reuse.
 
 ### 3. Use periodic() for Monitoring
 Use periodic() for continuous updates:
@@ -395,7 +383,7 @@ void periodic() override {
 }
 ```
 
-**Why:** periodic() runs continuously, perfect for monitoring and safety.
+Why: periodic() runs continuously without any commands having to run. This is perfect for any monitoring and safety checking.
 
 ## Naming Conventions
 
@@ -413,8 +401,8 @@ int m_speed;
 DriveSubsystem* m_subsystem;
 
 // Constants: kPascalCase
-constexpr int kMotorPort = 1;
-constexpr double kWheelDiameter = 3.25;
+const int kMotorPort = 1;
+const double kWheelDiameter = 3.25;
 
 // Parameters: camelCase (no prefix)
 void setSpeed(int speed);
@@ -423,9 +411,6 @@ void DriveCommand(DriveSubsystem* subsystem);
 	
 Reflection:
 	We documented critical best practices that prevent common bugs and design mistakes. These guidelines clarify when to use each command method, how to structure subsystems, and how to name code elements. Following these practices will prevent issues like command conflicts, memory leaks, and tight coupling between components. This documentation represents lessons learned from weeks of development and debugging.
-
-**[PHOTO NEEDED: Best practices reference card showing command lifecycle]**
-**[PHOTO NEEDED: Do's and Don'ts comparison showing correct vs incorrect patterns]**
 
 
 11/22/2025

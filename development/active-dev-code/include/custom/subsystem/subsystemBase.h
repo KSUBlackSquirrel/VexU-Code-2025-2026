@@ -9,6 +9,12 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <string>
+#include <typeinfo>
+#include <cstdlib>
+#ifdef __GNUG__
+    #include <cxxabi.h>
+#endif // __GNUG__
 
 class Scheduler;
 
@@ -27,6 +33,30 @@ public:
     // ========================================================================
     // SUBSYSTEM FUNCTIONS
     // ========================================================================
+
+    // Gets the name of the subsystem (auto-generated from class name)
+    virtual std::string getName() const {
+        const char* typeName = typeid(*this).name();
+        #ifdef __GNUG__
+            int status = 0;
+            char* demangled = abi::__cxa_demangle(typeName, 0, 0, &status);
+            if (status == 0 && demangled) {
+                std::string result(demangled);
+                free(demangled);
+                return result;
+            }
+        #endif
+        std::string name(typeName);
+        size_t classPos = name.find("class ");
+        if (classPos != std::string::npos) {
+            name = name.substr(classPos + 6);
+        }
+        size_t templatePos = name.find('<');
+        if (templatePos != std::string::npos) {
+            name = name.substr(0, templatePos);
+        }
+        return name.empty() ? "UnknownSubsystem" : name;
+    }
 
     // Sets a command to run when no other command is using the subsystem
     void setDefaultCommand(CommandBase* cmd);

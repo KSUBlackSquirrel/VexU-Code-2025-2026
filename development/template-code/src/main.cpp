@@ -10,7 +10,7 @@ extern void robotTeleop();
 
 const static uint32_t kMinLoopMs = 20;
 
-void run_helper(bool robotState, void (*funcState)(), std::string name="") {
+void run_helper(bool robotState, void (*funcState)()) {
     std::string functionName = typeid(funcState).name();
     Scheduler::getInstance().setRobotEnabled(robotState);
     Scheduler::getInstance().cancelAll();
@@ -31,12 +31,6 @@ void run_helper(bool robotState, void (*funcState)(), std::string name="") {
             pros::delay(kMinLoopMs - elapsed);
         }
 
-        // testing \/ \/ \/
-        // Print command name and number of commands in scheduler
-        size_t commandCount = Scheduler::getInstance().size();
-        customPrint::printf("[%s] Commands in scheduler: %zu\n", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
-        customPrint::screenPrint(8, "[%s] Commands in scheduler: %zu", !name.empty() ? name.c_str() : functionName.c_str(), commandCount);
-        // testing ^ ^ ^
     }
 }
 

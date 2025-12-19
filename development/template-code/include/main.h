@@ -51,12 +51,8 @@
 /**
  * You should add more #includes here
  */
-#include "custom/command/driveCommand.h"
-#include "custom/subsystem/driveSubsystem.h"
-
-#include "custom/command/exampleCommand.h"
-#include "custom/command/exampleDefaultCommand.h"
-#include "custom/subsystem/exampleSubsystem.h"
+#include "custom/command/template_command.h"
+#include "custom/subsystem/template_subsystem.h"
 
 
 

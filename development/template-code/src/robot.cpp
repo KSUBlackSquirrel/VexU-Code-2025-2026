@@ -1,133 +1,197 @@
 #include "main.h"
 
+// ============================================================================
+// ROBOT CONFIGURATION
+// ============================================================================
+// This file is where you instantiate subsystems, commands, and bind them to
+// controller buttons. Follow the templates in include/custom/command/ and
+// include/custom/subsystem/ when adding new functionality.
+
+// ============================================================================
+// CONTROLLER
+// ============================================================================
 Controller controller(globalConst::drive::kMainControllerID);
 
-// Add Subsystems Here
+// ============================================================================
+// SUBSYSTEMS
+// ============================================================================
+// Create subsystem instances here. Each subsystem represents a physical part
+// of the robot (drive, intake, lift, etc.) and is automatically registered
+// with the scheduler.
+
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
 
-// Example factory calls for CommandBase using ExampleSubsystem
-std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
-std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
-std::unique_ptr<CommandBase> runBackFor = exampleSub->runFor([]{ exampleSub->backward(); }, 2.0);
+// TODO: Add your subsystems here
+// Example:
+// std::unique_ptr<IntakeSubsystem> intakeSub = std::make_unique<IntakeSubsystem>();
+// std::unique_ptr<DriveSubsystem> driveSub = std::make_unique<DriveSubsystem>();
 
-// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
+// ============================================================================
+// COMMANDS
+// ============================================================================
+// Create command instances here. Commands control subsystems and define
+// robot behaviors. They can be triggered by buttons, run in autonomous,
+// or set as default commands.
 
-// Default commands
-// std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
+// Example commands using factory methods (simple, inline behavior):
+std::unique_ptr<CommandBase> exampleRun = exampleSub->run([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> exampleRunOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+std::unique_ptr<CommandBase> exampleRunFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
 
-std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+// Example command using command class (for more complex behavior):
+std::unique_ptr<CommandBase> examplePulse = std::make_unique<Pulse>(exampleSub.get());
 
-// Example command variations
-// std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
-// std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
-// std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
-std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+// Example functional command (useful for quick prototyping):
+std::unique_ptr<CommandBase> exampleFunctional = std::make_unique<FunctionalCommand>(
     [](){ exampleSub->forward(); },     // initialize
     [](){ /* execute logic */ },        // execute  
     [](bool interrupted){ 
-        customPrint::screenPrint(8, "interrupted type: %s", interrupted ? "true" : "false");
         exampleSub->stop(); 
-    }, // end
+    },                                   // end
     [](){ return false; },              // isFinished
-    std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
-    "Functional"                         // name
-);
-// std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
-
-
-std::unique_ptr<CommandBase> groupS = std::make_unique<SequentialCommandGroup>(
-    runFor.get(),
-    runBackFor.get()
+    std::initializer_list<SubsystemBase*>{exampleSub.get()}, // requirements
+    "ExampleFunctional"                  // name
 );
 
-std::unique_ptr<CommandBase> groupP = std::make_unique<ParallelCommandGroup>(
-    runFor.get()
-    // runBackFor.get()
+// Example command groups (for autonomous sequences):
+std::unique_ptr<CommandBase> exampleSequence = std::make_unique<SequentialCommandGroup>(
+    exampleRunFor.get()
+    // Add more commands here - they'll run one after another
 );
 
-std::unique_ptr<CommandBase> alsoGroup = runFor->andThen(runBackFor.get());
+// Example stop command (good for default commands):
+std::unique_ptr<CommandBase> exampleStop = std::make_unique<InstantCommand>(
+    []{ exampleSub->stop(); }, 
+    exampleSub.get()
+);
 
-std::unique_ptr<CommandBase> stop = std::make_unique<InstantCommand>([]{exampleSub->stop();}, exampleSub.get());
+// TODO: Add your commands here
+// Example:
+// std::unique_ptr<IntakeCommand> intakeCmd = std::make_unique<IntakeCommand>(intakeSub.get());
+// std::unique_ptr<DriveCommand> driveCmd = std::make_unique<DriveCommand>(driveSub.get(), &controller);
 
+// ============================================================================
+// BUTTON BINDINGS
+// ============================================================================
+// Map controller buttons to commands. This is where you define what happens
+// when the driver presses each button.
+//
+// Common binding types:
+// - onTrue(cmd)    : Run command once when button is pressed
+// - whileTrue(cmd) : Run command while button is held, cancel when released
+// - onFalse(cmd)   : Run command once when button is released
+//
+// Controller buttons: A, B, X, Y, UP, DOWN, LEFT, RIGHT, L1, L2, R1, R2
 
-// YOU CANT DO THIS
-// std::unique_ptr<CommandBase> addToBadGroup = std::make_unique<InstantCommand>([]{
-//     groupP = std::make_unique<ParallelCommandGroup>(groupP.get(), runBackFor.get());
-// }, exampleSub.get());
-
-// std::unique_ptr<CommandBase> addingTo = std::make_unique<InstantCommand>([&]{
-//     groupS = groupS->andThen(runFor.get());
-// });
-// No, it's not possible the way the codebase is currently set up. 
-// The fundamental issue is that button bindings capture the raw pointer 
-// (groupS.get()) at bind time, but when you reassign groupS, you 
-// delete the object that pointer points to.
-
-
-// Add Any Button Bindings Here
 void configureBindings() {
-    // Basic InstantCommands
-    // controller.Y().onTrue(new InstantCommand([]{exampleSub->forward();}, exampleSub.get()));
-    // controller.Y().onFalse(new InstantCommand([]{exampleSub->stop();}, exampleSub.get()));
-
-    // // Original Pulse command
-    // controller.X().onTrue(pulseCommand.get());
+    // Example bindings (uncomment and modify as needed):
     
-    // // TimeoutCommand - Pulse that automatically stops after 3 seconds
-    // controller.A().onTrue(timeoutCommand.get());
+    // Simple button press - runs command once
+    // controller.A().onTrue(exampleRunOnce.get());
     
-    // // WaitCommand - Just waits for 2 seconds (useful for autonomous sequences)
-    // controller.B().onTrue(waitCommand.get());
+    // Hold button - command runs while button held
+    // controller.R1().whileTrue(exampleRun.get());
     
-    // // FunctionalCommand - Custom command built with lambdas
-    // controller.DOWN().onTrue(functionalCommand.get());
-
-    // controller.UP().onTrue(run.get());
-    // controller.RIGHT().onTrue(runOnce.get());
-    // controller.LEFT().onTrue(runUntil.get());
-
-
-    controller.UP().onTrue(runFor.get());
-    controller.RIGHT().onTrue(runBackFor.get());
-    controller.LEFT().onTrue(groupS.get());
-    controller.DOWN().onTrue(alsoGroup.get());
-
-    controller.A().onTrue(stop.get());
-    controller.B().onTrue(groupP.get());
+    // Timed command - runs for specified duration
+    // controller.X().onTrue(exampleRunFor.get());
     
+    // Command sequence - multiple commands in order
+    // controller.Y().onTrue(exampleSequence.get());
+    
+    // Stop command
+    // controller.B().onTrue(exampleStop.get());
+    
+    // TODO: Add your button bindings here
+    // Example:
+    // controller.R1().whileTrue(intakeCmd.get());
+    // controller.L1().whileTrue(outtakeCmd.get());
+    
+    // Example: Currently bound for testing
+    controller.UP().onTrue(exampleRunFor.get());
+    controller.A().onTrue(exampleStop.get());
 }
 
+// ============================================================================
+// ROBOT LIFECYCLE FUNCTIONS
+// ============================================================================
+// These functions are called automatically at different points in the
+// robot's lifecycle. Use them to initialize, start, and manage robot behavior.
 
-
+/**
+ * @brief Called once when the robot program starts
+ * 
+ * Use this to:
+ * - Set default commands for subsystems
+ * - Initialize hardware that needs one-time setup
+ * - Configure button bindings (or call configureBindings())
+ */
 void robotInit() {
-    exampleSub->setDefaultCommand(stop.get());
+    // Set default commands (run when no other command needs the subsystem)
+    exampleSub->setDefaultCommand(exampleStop.get());
+    
+    // TODO: Set your default commands here
+    // Example:
+    // driveSub->setDefaultCommand(driveCmd.get());
 }
 
+/**
+ * @brief Called when the robot is disabled
+ * 
+ * Use this to:
+ * - Display status messages
+ * - Reset state for next enable
+ * - Log information
+ */
 void robotDisabled() {
-    for(int i=1; i<=13; i++) customPrint::screenPrint(i, "--------DISABLED--------\n");
+    // Optional: Display disabled status on screen
+    // customPrint::screenPrint(1, "--------DISABLED--------");
 }
 
-void robotCompInit() {}
+/**
+ * @brief Called once at the start of competition mode
+ * 
+ * Use this for competition-specific initialization that shouldn't
+ * happen during testing/development.
+ */
+void robotCompInit() {
+    // Optional: Competition-specific setup
+}
 
+/**
+ * @brief Called at the start of autonomous period
+ * 
+ * Use this to:
+ * - Schedule autonomous command sequences
+ * - Start autonomous routines
+ */
 void robotAuto() {
-    // Scheduler::getInstance().schedule(functionalCommand.get());
-    // Scheduler::getInstance().schedule(run.get());
+    // Schedule autonomous commands
+    // Scheduler::getInstance().schedule(exampleSequence.get());
+    
+    // TODO: Schedule your autonomous routine here
+    // Example:
+    // Scheduler::getInstance().schedule(autoRoutine.get());
 }
 
+/**
+ * @brief Called repeatedly during teleoperated period (~50 times/second)
+ * 
+ * Use this to:
+ * - Display telemetry on screen
+ * - Log debug information
+ * - Monitor robot state
+ * 
+ * NOTE: Don't put control logic here! Control logic belongs in commands.
+ *       This is just for monitoring and debugging.
+ */
 void robotTeleop() {
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 2, "List Size: %3d", static_cast<int>(Scheduler::getInstance().size()));
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 3, "Named Command: %s", namedCommand.get()->getName());
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 4, "Required count: %d", static_cast<int>(pulseCommand.get()->getRequiredSubsystems().size()));
-    // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 5, "exampleSub current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
-    // // pros::screen::print(pros::E_TEXT_MEDIUM, 6, "cancelIncomingCommand Int Behavior: %d", static_cast<int>(cancelIncomingCommand.get()->getInterruptionBehavior()));
-    // // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "ignoringDisableCommand Int Behavior: %d", static_cast<int>(ignoringDisableCommand.get()->getInterruptionBehavior()));
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
-    // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
-
-    CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
-    customPrint::screenPrint(2, "Current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
-    customPrint::screenPrint(3, "Queue size: %d", static_cast<int>(Scheduler::getInstance().size()));
+    // Example: Display current command on screen
+    CommandBase* currentCmd = exampleSub->getCurrentCommand();
+    customPrint::screenPrint(1, "Example: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+    customPrint::screenPrint(2, "Queue: %d", static_cast<int>(Scheduler::getInstance().size()));
+    
+    // TODO: Add your telemetry here
+    // Example:
+    // customPrint::screenPrint(3, "Intake: %s", intakeSub->isRunning() ? "Running" : "Stopped");
+    // customPrint::screenPrint(4, "Position: %.1f", driveSub->getPosition());
 }
