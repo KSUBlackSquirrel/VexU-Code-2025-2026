@@ -1,5 +1,4 @@
-#ifndef GLOBALS_H_
-#define GLOBALS_H_
+#pragma once
 
 #include "pros/motors.hpp"
 #include "lemlib/api.hpp"
@@ -54,6 +53,3 @@ namespace intake {
 
 } // all global consts
 
-
-
-#endif // GLOBALS_H_

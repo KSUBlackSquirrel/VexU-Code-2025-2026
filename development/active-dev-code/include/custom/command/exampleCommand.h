@@ -1,5 +1,4 @@
-#ifndef EXAMPLECOMMAND_H_
-#define EXAMPLECOMMAND_H_
+#pragma once
 
 #include "commandBase.h"
 #include "custom/subsystem/exampleSubsystem.h"
@@ -57,4 +56,3 @@ private:
     bool m_movingForward = true;
 };
 
-#endif // EXAMPLECOMMAND_H_

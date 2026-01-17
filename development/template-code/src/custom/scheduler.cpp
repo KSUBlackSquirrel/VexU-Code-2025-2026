@@ -1,42 +1,77 @@
+/**
+ * @file scheduler.cpp
+ * @brief Implementation of command scheduler
+ * 
+ * Provides the implementation for the Scheduler singleton that manages all
+ * command execution, subsystem updates, and controller input polling.
+ */
 #include "main.h"
 
-// Singleton instance access
+/**
+ * @brief Get the singleton scheduler instance
+ * @return Reference to the global scheduler
+ */
 Scheduler& Scheduler::getInstance() {
     static Scheduler instance;
     return instance;
 }
 
-// Scheduler constructor: initializes the scheduler
+/**
+ * @brief Construct the scheduler
+ */
 Scheduler::Scheduler() = default;
 
-// Enable/disable scheduler functionality
+/**
+ * @brief Enable the scheduler to process commands
+ */
 void Scheduler::enable() {
     m_enabled = true;
 }
 
+/**
+ * @brief Disable the scheduler
+ */
 void Scheduler::disable() {
     m_enabled = false;
 }
 
+/**
+ * @brief Check if scheduler is enabled
+ * @return True if scheduler is running
+ */
 bool Scheduler::isEnabled() const {
     return m_enabled;
 }
 
-// Robot state management
+/**
+ * @brief Set whether robot is enabled
+ * @param enabled True if robot is enabled (teleop/auto), false if disabled
+ */
 void Scheduler::setRobotEnabled(bool enabled) {
     m_robotEnabled = enabled;
 }
 
+/**
+ * @brief Check if robot is enabled
+ * @return True if robot is enabled
+ */
 bool Scheduler::isRobotEnabled() const {
     return m_robotEnabled;
 }
 
-// Register a controller for polling (button/joystick events)
+/**
+ * @brief Register a controller for input polling
+ * @param ctrl Controller to register
+ */
 void Scheduler::registerController(Controller* ctrl) {
     m_controllers.push_back(ctrl);
 }
 
-// Check if a command is currently scheduled
+/**
+ * @brief Check if a command is currently scheduled
+ * @param cmd Command to check
+ * @return True if command is in the scheduler queue
+ */
 bool Scheduler::isScheduled(const CommandBase* cmd) const {
     for (const auto& cmdPtr : m_queue) {
         if (cmdPtr.get() == cmd) {
@@ -46,7 +81,11 @@ bool Scheduler::isScheduled(const CommandBase* cmd) const {
     return false;
 }
 
-// Get the command currently requiring a subsystem
+/**
+ * @brief Get the command currently requiring a subsystem
+ * @param subsystem Subsystem to check
+ * @return Pointer to command using the subsystem, or nullptr if idle
+ */
 CommandBase* Scheduler::requiring(SubsystemBase* subsystem) const {
     auto it = m_requirements.find(subsystem);
     if (it != m_requirements.end()) {
@@ -55,7 +94,11 @@ CommandBase* Scheduler::requiring(SubsystemBase* subsystem) const {
     return nullptr;
 }
 
-// Check if all requirements are free
+/**
+ * @brief Check if all required subsystems are free
+ * @param requirements Subsystems to check
+ * @return True if all subsystems are available
+ */
 bool Scheduler::requirementsFree(const std::unordered_set<SubsystemBase*>& requirements) const {
     for (SubsystemBase* req : requirements) {
         if (m_requirements.count(req)) {
@@ -65,7 +108,11 @@ bool Scheduler::requirementsFree(const std::unordered_set<SubsystemBase*>& requi
     return true;
 }
 
-// Check if all commands using requirements are interruptible
+/**
+ * @brief Check if commands using subsystems can be interrupted
+ * @param requirements Subsystems to check
+ * @return True if all commands using those subsystems are interruptible
+ */
 bool Scheduler::areCommandsInterruptible(const std::unordered_set<SubsystemBase*>& requirements) const {
     for (SubsystemBase* req : requirements) {
         auto it = m_requirements.find(req);
@@ -79,7 +126,13 @@ bool Scheduler::areCommandsInterruptible(const std::unordered_set<SubsystemBase*
     return true;
 }
 
-// Initialize a command and track its requirements
+/**
+ * @brief Initialize a command and track its subsystem requirements
+ * @param command Command to initialize
+ * @param requirements Subsystems the command requires
+ * 
+ * Calls command->initialize() and registers subsystem requirements.
+ */
 void Scheduler::initCommand(CommandBase* command, const std::unordered_set<SubsystemBase*>& requirements) {
     // Track requirements
     for (SubsystemBase* req : requirements) {
@@ -95,7 +148,12 @@ void Scheduler::initCommand(CommandBase* command, const std::unordered_set<Subsy
     }
 }
 
-// Interrupt a command
+/**
+ * @brief Interrupt and remove a command
+ * @param command Command to interrupt
+ * 
+ * Calls command->end(true) and frees subsystem requirements.
+ */
 void Scheduler::interruptCommand(CommandBase* command) {
     command->end(true);
     
@@ -111,7 +169,12 @@ void Scheduler::interruptCommand(CommandBase* command) {
     }
 }
 
-// Finish a command normally
+/**
+ * @brief Finish a command normally and remove it
+ * @param command Command that finished
+ * 
+ * Calls command->end(false) and frees subsystem requirements.
+ */
 void Scheduler::finishCommand(CommandBase* command) {
     command->end(false);
     
@@ -127,7 +190,14 @@ void Scheduler::finishCommand(CommandBase* command) {
     }
 }
 
-// Main scheduling method - enhanced version of addCommand
+/**
+ * @brief Schedule a command to run
+ * @param cmd Command to schedule (const pointer - scheduler clones it)
+ * @return Pointer to the scheduled command instance, or nullptr if not scheduled
+ * 
+ * Handles requirement checking, command interruption, and command initialization.
+ * If subsystems are in use, interruptible commands are canceled to make room.
+ */
 CommandBase* Scheduler::schedule(const CommandBase* cmd) {
     if (!cmd) {
         return nullptr;
@@ -194,7 +264,12 @@ CommandBase* Scheduler::schedule(const CommandBase* cmd) {
     }
 }
 
-// Cancel a specific command instance in the queue
+/**
+ * @brief Cancel a specific running command
+ * @param commandInstance Pointer to command instance to cancel
+ * 
+ * Interrupts the command and removes it from the scheduler queue.
+ */
 void Scheduler::cancel(CommandBase* commandInstance) {
     if (!commandInstance) return;
     for (auto it = m_queue.begin(); it != m_queue.end(); ++it) {
@@ -207,7 +282,12 @@ void Scheduler::cancel(CommandBase* commandInstance) {
 }
 
 
-// Cancel all scheduled commands
+/**
+ * @brief Cancel all running commands
+ * 
+ * Interrupts all commands and clears the scheduler queue.
+ * Used when switching robot modes (autonomous to teleop, etc.).
+ */
 void Scheduler::cancelAll() {
     for (auto& cmdPtr : m_queue) {
         if (cmdPtr) {
@@ -218,66 +298,44 @@ void Scheduler::cancelAll() {
     m_requirements.clear();
 }
 
-// Event callback registration methods
+/**
+ * @brief Register callback for command initialization
+ * @param action Function to call when any command initializes
+ */
 void Scheduler::onCommandInitialize(std::function<void(CommandBase*)> action) {
     m_initActions.push_back(action);
 }
 
+/**
+ * @brief Register callback for command execution
+ * @param action Function to call when any command executes
+ */
 void Scheduler::onCommandExecute(std::function<void(CommandBase*)> action) {
     m_executeActions.push_back(action);
 }
 
+/**
+ * @brief Register callback for command completion
+ * @param action Function to call when any command finishes
+ */
 void Scheduler::onCommandFinish(std::function<void(CommandBase*)> action) {
     m_finishActions.push_back(action);
 }
 
+/**
+ * @brief Register callback for command interruption
+ * @param action Function to call when any command is interrupted
+ */
 void Scheduler::onCommandInterrupt(std::function<void(CommandBase*)> action) {
     m_interruptActions.push_back(action);
 }
 
-/* 
-// Example usage of event callbacks (add this code to your robot initialization):
-
-void robotInit() {
-    // Log when commands start
-    Scheduler::getInstance().onCommandInitialize([](CommandBase* cmd) {
-        customPrint::printf("[SCHEDULER] Command initialized: %s\n", cmd->getName().c_str());
-    });
-    
-    // Log when commands are executing (called every 20ms while running)
-    Scheduler::getInstance().onCommandExecute([](CommandBase* cmd) {
-        // Be careful with this one - it's called very frequently!
-        // printf("[SCHEDULER] Executing: %s\n", cmd->getName().c_str());
-    });
-    
-    // Log when commands finish successfully
-    Scheduler::getInstance().onCommandFinish([](CommandBase* cmd) {
-        customPrint::printf("[SCHEDULER] Command finished: %s\n", cmd->getName().c_str());
-    });
-    
-    // Log when commands are interrupted/canceled
-    Scheduler::getInstance().onCommandInterrupt([](CommandBase* cmd) {
-        customPrint::printf("[SCHEDULER] Command interrupted: %s\n", cmd->getName().c_str());
-    });
-    
-    // Example: Update dashboard when commands change state
-    Scheduler::getInstance().onCommandInitialize([](CommandBase* cmd) {
-        // Update your dashboard/LCD display
-        // pros::lcd::set_text(1, "Running: " + cmd->getName());
-    });
-    
-    // Example: Performance monitoring
-    Scheduler::getInstance().onCommandFinish([](CommandBase* cmd) {
-        // Track command execution times, success rates, etc.
-        // performanceTracker.recordCompletion(cmd->getName());
-    });
-}
-
-// In your main robot loop, make sure to call:
-// Scheduler::getInstance().run();
-*/
-
-// Register a subsystem for periodic updates (called every loop)
+/**
+ * @brief Register a subsystem for periodic updates
+ * @param sub Subsystem to register
+ * 
+ * Registered subsystems have their periodic() method called every scheduler cycle.
+ */
 void Scheduler::registerSubsystemForPeriodic(SubsystemBase* sub) {
     if (sub == nullptr) return;
     for (SubsystemBase* existing : m_periodicSubsystems) {
@@ -286,7 +344,13 @@ void Scheduler::registerSubsystemForPeriodic(SubsystemBase* sub) {
     m_periodicSubsystems.push_back(sub);
 }
 
-// Set a default command for a specific subsystem
+/**
+ * @brief Set a default command for a subsystem
+ * @param sub Subsystem to configure
+ * @param cmd Command to run when subsystem is idle
+ * 
+ * Default commands run automatically when no other command requires the subsystem.
+ */
 void Scheduler::setDefaultCommand(SubsystemBase* sub, CommandBase* cmd) {
     if (sub && cmd) {
         m_defaultCommands[sub] = cmd;
@@ -296,11 +360,20 @@ void Scheduler::setDefaultCommand(SubsystemBase* sub, CommandBase* cmd) {
 // ============================================================================
 // SCHEDULER MAIN RUN METHOD
 // ============================================================================
-// Run one scheduler tick following the FRC Command Scheduler pattern:
-// Step 1: Run Subsystem Periodic Methods
-// Step 2: Poll Command Scheduling Triggers
-// Step 3: Run/Finish Scheduled Commands
-// Step 4: Schedule Default Commands
+
+/**
+ * @brief Run one scheduler cycle
+ * 
+ * This is the main scheduler loop that executes all commands and subsystems.
+ * Called continuously in the main robot loop (~50Hz).
+ * 
+ * Execution order:
+ * 1. Run subsystem periodic() methods
+ * 2. Poll controller inputs for button/joystick events
+ * 3. Execute all running commands, finish/interrupt as needed
+ * 4. Schedule default commands for idle subsystems
+ * 5. Check for performance issues with watchdog
+ */
 void Scheduler::run() {
     // Early exit if scheduler is disabled
     if (!m_enabled) return;
@@ -418,6 +491,20 @@ void Scheduler::run() {
     
 }
 
+/**
+ * @brief Get number of running commands
+ * @return Count of active commands
+ */
 std::size_t Scheduler::size() const { return m_queue.size(); }
+
+/**
+ * @brief Get number of default commands configured
+ * @return Count of default commands
+ */
 std::size_t Scheduler::defaultSize() const { return m_defaultCommands.size(); }
+
+/**
+ * @brief Check if scheduler has any running commands
+ * @return True if no commands are running
+ */
 bool Scheduler::empty() const { return m_queue.empty(); }

@@ -1,3 +1,21 @@
+/**
+ * @file robot.cpp
+ * @brief Robot configuration and lifecycle implementation
+ * 
+ * This file is where you instantiate subsystems, commands, and bind them to
+ * controller buttons. It also contains lifecycle functions that are called
+ * during different robot states.
+ * 
+ * Key sections:
+ * - CONTROLLER: Controller instance creation
+ * - SUBSYSTEMS: Create subsystem instances for robot hardware
+ * - COMMANDS: Create command instances for robot behaviors
+ * - BUTTON BINDINGS: Map controller buttons to commands
+ * - ROBOT LIFECYCLE: User functions called by main.cpp
+ * 
+ * Follow the templates in include/custom/command/ and include/custom/subsystem/
+ * when adding new functionality.
+ */
 #include "main.h"
 
 // ============================================================================
@@ -10,7 +28,7 @@
 // ============================================================================
 // CONTROLLER
 // ============================================================================
-Controller controller(globalConst::drive::kMainControllerID);
+Controller controller(global::drive::kMainControllerID);
 
 // ============================================================================
 // SUBSYSTEMS
@@ -19,7 +37,7 @@ Controller controller(globalConst::drive::kMainControllerID);
 // of the robot (drive, intake, lift, etc.) and is automatically registered
 // with the scheduler.
 
-std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+std::unique_ptr<TemplateSubsystem> exampleSub = std::make_unique<TemplateSubsystem>();
 
 // TODO: Add your subsystems here
 // Example:
@@ -32,38 +50,6 @@ std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem
 // Create command instances here. Commands control subsystems and define
 // robot behaviors. They can be triggered by buttons, run in autonomous,
 // or set as default commands.
-
-// Example commands using factory methods (simple, inline behavior):
-std::unique_ptr<CommandBase> exampleRun = exampleSub->run([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> exampleRunOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> exampleRunFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
-
-// Example command using command class (for more complex behavior):
-std::unique_ptr<CommandBase> examplePulse = std::make_unique<Pulse>(exampleSub.get());
-
-// Example functional command (useful for quick prototyping):
-std::unique_ptr<CommandBase> exampleFunctional = std::make_unique<FunctionalCommand>(
-    [](){ exampleSub->forward(); },     // initialize
-    [](){ /* execute logic */ },        // execute  
-    [](bool interrupted){ 
-        exampleSub->stop(); 
-    },                                   // end
-    [](){ return false; },              // isFinished
-    std::initializer_list<SubsystemBase*>{exampleSub.get()}, // requirements
-    "ExampleFunctional"                  // name
-);
-
-// Example command groups (for autonomous sequences):
-std::unique_ptr<CommandBase> exampleSequence = std::make_unique<SequentialCommandGroup>(
-    exampleRunFor.get()
-    // Add more commands here - they'll run one after another
-);
-
-// Example stop command (good for default commands):
-std::unique_ptr<CommandBase> exampleStop = std::make_unique<InstantCommand>(
-    []{ exampleSub->stop(); }, 
-    exampleSub.get()
-);
 
 // TODO: Add your commands here
 // Example:
@@ -83,6 +69,22 @@ std::unique_ptr<CommandBase> exampleStop = std::make_unique<InstantCommand>(
 //
 // Controller buttons: A, B, X, Y, UP, DOWN, LEFT, RIGHT, L1, L2, R1, R2
 
+/**
+ * @brief Configure button and joystick bindings
+ * 
+ * Map controller buttons to commands. This function is called once during
+ * initialize() to set up all input bindings.
+ * 
+ * Binding types:
+ * - onTrue(cmd)    : Run command once when button is pressed
+ * - whileTrue(cmd) : Run command while button is held, cancel when released
+ * - onFalse(cmd)   : Run command once when button is released
+ * 
+ * Example bindings:
+ * - controller.A().onTrue(cmd)       : Press A to run command once
+ * - controller.R1().whileTrue(cmd)   : Hold R1 to run command continuously
+ * - controller.X().onFalse(cmd)      : Release X to run command
+ */
 void configureBindings() {
     // Example bindings (uncomment and modify as needed):
     
@@ -105,10 +107,6 @@ void configureBindings() {
     // Example:
     // controller.R1().whileTrue(intakeCmd.get());
     // controller.L1().whileTrue(outtakeCmd.get());
-    
-    // Example: Currently bound for testing
-    controller.UP().onTrue(exampleRunFor.get());
-    controller.A().onTrue(exampleStop.get());
 }
 
 // ============================================================================
@@ -120,49 +118,74 @@ void configureBindings() {
 /**
  * @brief Called once when the robot program starts
  * 
+ * This function runs once during initialize() to set up robot-specific
+ * configuration that happens after the scheduler is initialized.
+ * 
  * Use this to:
  * - Set default commands for subsystems
  * - Initialize hardware that needs one-time setup
- * - Configure button bindings (or call configureBindings())
+ * - Configure sensors or calibrate systems
+ * - Load saved configuration from SD card
+ * 
+ * Note: Button bindings are configured separately in configureBindings().
  */
-void robotInit() {
-    // Set default commands (run when no other command needs the subsystem)
-    exampleSub->setDefaultCommand(exampleStop.get());
-    
+void robotInit() {   
     // TODO: Set your default commands here
     // Example:
     // driveSub->setDefaultCommand(driveCmd.get());
 }
 
 /**
- * @brief Called when the robot is disabled
+ * @brief Called repeatedly while robot is disabled (~50 times/second)
+ * 
+ * This function runs in a loop while the robot is disabled. Use it for
+ * monitoring, status displays, or preparing for the next enabled period.
  * 
  * Use this to:
- * - Display status messages
- * - Reset state for next enable
- * - Log information
+ * - Update autonomous selector display
+ * - Monitor battery/sensor status
+ * - Reset state for next enable period
+ * - Log diagnostic information
+ * 
+ * Note: Motors and pneumatics cannot be controlled while disabled.
  */
 void robotDisabled() {
-    // Optional: Display disabled status on screen
-    // customPrint::screenPrint(1, "--------DISABLED--------");
 }
 
 /**
- * @brief Called once at the start of competition mode
+ * @brief Called once at competition start
  * 
- * Use this for competition-specific initialization that shouldn't
- * happen during testing/development.
+ * This function runs once when connected to Field Management System or
+ * VEX Competition Switch, before autonomous begins. Use this for
+ * competition-specific setup that shouldn't happen during testing.
+ * 
+ * Use this to:
+ * - Display autonomous selection menu on screen
+ * - Lock in competition configuration
+ * - Initialize competition-specific logging
+ * - Verify all systems are ready
+ * 
+ * This does NOT run during development/testing without competition control.
  */
 void robotCompInit() {
     // Optional: Competition-specific setup
 }
 
 /**
- * @brief Called at the start of autonomous period
+ * @brief Called repeatedly during autonomous period (~50 times/second)
+ * 
+ * This function runs in a loop during the autonomous period. Typically you
+ * schedule autonomous command sequences at the start, then use this for
+ * monitoring or adjustments.
  * 
  * Use this to:
- * - Schedule autonomous command sequences
- * - Start autonomous routines
+ * - Schedule autonomous command sequences (do this once at start)
+ * - Monitor autonomous progress
+ * - Display telemetry on screen
+ * - Implement simple autonomous routines without commands
+ * 
+ * Note: For complex autonomous, schedule command groups instead of writing
+ * logic directly in this function. Commands provide better structure and reusability.
  */
 void robotAuto() {
     // Schedule autonomous commands
@@ -176,19 +199,29 @@ void robotAuto() {
 /**
  * @brief Called repeatedly during teleoperated period (~50 times/second)
  * 
- * Use this to:
- * - Display telemetry on screen
- * - Log debug information
- * - Monitor robot state
+ * This function runs in a loop during driver control. Use it for telemetry,
+ * monitoring, and debugging. Do NOT put control logic here - that belongs
+ * in commands!
  * 
- * NOTE: Don't put control logic here! Control logic belongs in commands.
- *       This is just for monitoring and debugging.
+ * Use this to:
+ * - Show sensor values and telemetry
+ * - Log debug information to terminal
+ * - Monitor system health (temperature, battery, etc.)
+ * - Update dashboard/competition display
+ * 
+ * DO NOT use this for:
+ * - Reading controller inputs (use button bindings instead)
+ * - Controlling motors/subsystems (use commands instead)
+ * - Implementing driver control logic (create commands!)
+ * 
+ * The command-based framework handles all control automatically through
+ * bindings and commands. This function is purely for monitoring.
  */
 void robotTeleop() {
     // Example: Display current command on screen
-    CommandBase* currentCmd = exampleSub->getCurrentCommand();
-    customPrint::screenPrint(1, "Example: %s", currentCmd ? currentCmd->getName().c_str() : "None");
-    customPrint::screenPrint(2, "Queue: %d", static_cast<int>(Scheduler::getInstance().size()));
+    // CommandBase* currentCmd = exampleSub->getCurrentCommand();
+    // customPrint::screenPrint(1, "Example: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+    // customPrint::screenPrint(2, "Queue: %d", static_cast<int>(Scheduler::getInstance().size()));
     
     // TODO: Add your telemetry here
     // Example:

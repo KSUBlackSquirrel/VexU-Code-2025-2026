@@ -1,6 +1,6 @@
 // CommandBase.h
-#ifndef COMMANDBASE_H_
-#define COMMANDBASE_H_
+#ifndef COMMAND_H_
+#define COMMAND_H_
 
 #include "custom/globals.h"
 #include "pros/rtos.hpp"

@@ -1,5 +1,4 @@
-#ifndef DRIVECOMMAND_H_
-#define DRIVECOMMAND_H_
+#pragma once
 
 #include "commandBase.h"
 #include "custom/subsystem/driveSubsystem.h"
@@ -32,5 +31,3 @@ private:
     DriveSubsystem* m_subsystem;
     Controller* m_controller;
 };
-
-#endif // DRIVECOMMAND_H_

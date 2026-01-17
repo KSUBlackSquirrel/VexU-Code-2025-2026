@@ -4,6 +4,7 @@ Controller controller(globalConst::drive::kMainControllerID);
 
 // Add Subsystems Here
 std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+std::unique_ptr<DriveSubsystem> driveSub = std::make_unique<DriveSubsystem>();
 
 // Example factory calls for CommandBase using ExampleSubsystem
 std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
@@ -50,7 +51,7 @@ std::unique_ptr<CommandBase> groupP = std::make_unique<ParallelCommandGroup>(
 std::unique_ptr<CommandBase> alsoGroup = runFor->andThen(runBackFor.get());
 
 std::unique_ptr<CommandBase> stop = std::make_unique<InstantCommand>([]{exampleSub->stop();}, exampleSub.get());
-
+std::unique_ptr<CommandBase> autoPath = std::make_unique<InstantCommand>([]{driveSub->exampleAutoPath();}, driveSub.get());
 
 // YOU CANT DO THIS
 // std::unique_ptr<CommandBase> addToBadGroup = std::make_unique<InstantCommand>([]{
@@ -114,6 +115,7 @@ void robotCompInit() {}
 void robotAuto() {
     // Scheduler::getInstance().schedule(functionalCommand.get());
     // Scheduler::getInstance().schedule(run.get());
+    Scheduler::getInstance().schedule(autoPath.get());
 }
 
 void robotTeleop() {

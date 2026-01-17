@@ -1,6 +1,23 @@
-// CommandBase.h
-#ifndef COMMANDBASE_H_
-#define COMMANDBASE_H_
+/**
+ * @file commandBase.h
+ * @brief Command-based framework for robot control
+ * 
+ * This file defines the command system used to control robot behavior.
+ * Commands represent actions the robot can perform (drive forward, spin intake, etc.)
+ * and are scheduled by the Scheduler to run at the appropriate times.
+ * 
+ * Key concepts:
+ * - Commands control subsystems and define robot behaviors
+ * - Multiple commands cannot use the same subsystem simultaneously
+ * - Commands have lifecycle methods: initialize(), execute(), end(), isFinished()
+ * - Commands can be composed into groups (sequential, parallel)
+ * 
+ * For creating custom commands, copy template_command.h.
+ * 
+ * DO NOT modify this file unless you know what you are doing.
+ */
+#ifndef COMMAND_H_
+#define COMMAND_H_
 
 #include "custom/globals.h"
 #include "pros/rtos.hpp"
@@ -26,14 +43,37 @@ class StartEndCommand;
 class FunctionalCommand;
 class InstantCommand;
 
-// Interruption behavior enum
+/**
+ * @brief Defines how commands respond to scheduling conflicts
+ * 
+ * When a new command is scheduled that requires a subsystem already in use,
+ * the scheduler uses this behavior to resolve the conflict.
+ */
 enum class InterruptionBehavior {
-    kCancelSelf,        // This command will be canceled when interrupted
-    kCancelIncoming     // Incoming commands will be canceled instead of this one
+    kCancelSelf,        ///< This command will be canceled when interrupted
+    kCancelIncoming     ///< Incoming commands will be canceled instead of this one
 };
 
-// CommandBase: interface for all commands that can be scheduled and executed
+/**
+ * @brief Base class for all commands in the command-based framework
+ * 
+ * Commands represent actions the robot performs. They control subsystems and
+ * are scheduled by the Scheduler. Commands have a lifecycle with four key methods:
+ * 
+ * Lifecycle:
+ * 1. initialize() - Called once when command starts
+ * 2. execute()    - Called repeatedly (~50Hz) while command runs
+ * 3. isFinished() - Checked each cycle to determine if command should end
+ * 4. end()        - Called once when command finishes or is interrupted
+ * 
+ * See template_command.h for examples of creating custom commands.
+ */
 class CommandBase {
+    // Friend declarations for classes that need internal access
+    friend class SequentialCommandGroup;
+    friend class ParallelCommandGroup;
+    friend class Scheduler;
+    
 private:
     std::vector<SubsystemBase*> m_requiredSubsystems;  // Subsystems required for this command
     InterruptionBehavior m_interruptionBehavior;
@@ -51,17 +91,62 @@ public:
     // LIFECYCLE METHODS
     // ========================================================================
     
+    /**
+     * @brief Called once when the command is first scheduled
+     * 
+     * Use this to initialize variables, reset state, or prepare hardware.
+     * Do NOT do this in the constructor - commands are reused and initialize()
+     * runs each time the command starts.
+     */
     virtual void initialize() {};
+    
+    /**
+     * @brief Called repeatedly while the command is running (~50 times/second)
+     * 
+     * This is where the main command logic goes. Update motors, read sensors,
+     * process controller input, or run control loops here.
+     */
     virtual void execute() {};
+    
+    /**
+     * @brief Called once when the command ends
+     * @param interrupted True if command was interrupted, false if it finished normally
+     * 
+     * Use this to clean up resources, stop motors, or save final state.
+     * Always stop motors here for safety!
+     */
     virtual void end(bool interrupted) {};
+    
+    /**
+     * @brief Determine if the command has completed
+     * @return true if command should end, false if it should continue
+     * 
+     * Examples:
+     * - return false; // Never ends (for default commands)
+     * - return timer > 1000; // End after 1 second
+     * - return sensor > threshold; // End when condition met
+     */
     virtual bool isFinished() = 0;
+    
+    /**
+     * @brief Create a copy of this command
+     * @return Pointer to new command instance
+     * 
+     * Required for command groups and decorators. Usually just copy the
+     * constructor parameters: return new MyCommand(m_subsystem, m_param);
+     */
     virtual CommandBase* clone() const = 0;
 
     // ========================================================================
     // COMMAND FUNCTIONS
     // ========================================================================
 
-    // Command properties
+    /**
+     * @brief Get the name of this command for debugging
+     * @return Command name (auto-generated from class name)
+     * 
+     * Used in scheduler logging and telemetry. Override to provide custom names.
+     */
     virtual std::string getName() const {
         const char* typeName = typeid(*this).name();
         #ifdef __GNUG__
@@ -85,49 +170,144 @@ public:
         return name.empty() ? "UnknownCommand" : name;
     }
 
-    // subsystem behavior
+    /**
+     * @brief Declare that this command requires a subsystem
+     * @param subsystem Subsystem this command controls
+     * 
+     * Call this in your command constructor for any subsystems the command controls.
+     * The scheduler ensures only one command can use a subsystem at a time.
+     */
     inline void addRequirements(SubsystemBase* subsystem) { if (subsystem != nullptr) m_requiredSubsystems.push_back(subsystem); }
+    
+    /**
+     * @brief Get all subsystems required by this command
+     * @return Vector of subsystem pointers
+     */
     inline const std::vector<SubsystemBase*>& getRequiredSubsystems() const { return m_requiredSubsystems; }
 
-    // Interruption behavior
+    /**
+     * @brief Set whether this command can be interrupted
+     * @param interruptible If true, command can be canceled; if false, it blocks other commands
+     * 
+     * Interruptible commands (default) will be canceled when a new command needs their subsystems.
+     * Non-interruptible commands block other commands until they finish.
+     */
     void setInterruptible(bool interruptible) { m_interruptionBehavior = interruptible ? InterruptionBehavior::kCancelSelf : InterruptionBehavior::kCancelIncoming; }
+    
+    /**
+     * @brief Get the interruption behavior
+     * @return Current interruption behavior setting
+     */
     InterruptionBehavior getInterruptionBehavior() const { return m_interruptionBehavior; }
 
-    // Robot state behavior
+    /**
+     * @brief Set whether command runs when robot is disabled
+     * @param runsWhenDisabled If true, command runs even when disabled
+     * 
+     * Most commands should NOT run when disabled for safety.
+     */
     void setRunsWhenDisabled(bool runsWhenDisabled) { m_runsWhenDisabled = runsWhenDisabled; }
+    
+    /**
+     * @brief Check if command runs when disabled
+     * @return True if command runs when disabled
+     */
     bool runsWhenDisabled() const { return m_runsWhenDisabled; }
-
-    // Composition detection
-    void setComposed(bool composed) { m_isComposed = composed; }
-    bool isComposed() const { return m_isComposed; }
 
     // ========================================================================
     // COMMAND DECORATORS
     // ========================================================================
+    // These methods create modified versions of commands with additional behavior
 
-    // Defined later at bottom of code
+    /**
+     * @brief Create version of command that ends after a timeout
+     * @param timeoutSeconds Maximum time command can run (in seconds)
+     * @return New command that ends when original finishes OR timeout expires
+     * 
+     * Usage: cmd->withTimeout(2.0) ends after 2 seconds
+     */
     std::unique_ptr<CommandBase> withTimeout(double timeoutSeconds);
+    
+    /**
+     * @brief Create version of command with custom name
+     * @param name Custom name for debugging/logging
+     * @return New command with specified name
+     * 
+     * Usage: cmd->withName("IntakeForward") for clearer logs
+     */
     std::unique_ptr<CommandBase> withName(const std::string& name);
+    
+    /**
+     * @brief Create sequential group with another command
+     * @param next Command to run after this one finishes
+     * @return New sequential command group
+     * 
+     * Usage: cmd1->andThen(cmd2) runs cmd1, then cmd2
+     */
     std::unique_ptr<CommandBase> andThen(const CommandBase* next);
 
+    /**
+     * @brief Create version with specific interrupt behavior
+     * @param behavior Interruption behavior to use
+     * @return New command with specified behavior
+     */
     std::unique_ptr<CommandBase> withInterruptBehavior(InterruptionBehavior behavior) {
         auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
         clonedCommand->m_interruptionBehavior = behavior;
         return clonedCommand;
     }
 
+    /**
+     * @brief Create version that runs even when robot is disabled
+     * @param shouldIgnoreDisable If true, command runs when disabled
+     * @return New command with specified disabled behavior
+     * 
+     * Use sparingly - most commands should stop when disabled for safety.
+     */
     std::unique_ptr<CommandBase> ignoringDisable(bool shouldIgnoreDisable = true) {
         auto clonedCommand = std::unique_ptr<CommandBase>(this->clone());
         clonedCommand->setRunsWhenDisabled(shouldIgnoreDisable);
         return clonedCommand;
     }
+
+protected:
+    // ========================================================================
+    // INTERNAL METHODS
+    // ========================================================================
+    // These methods are used internally by the framework. Do not call manually.
+    
+    /**
+     * @brief Mark command as part of a command group
+     * @param composed True if command is inside a group
+     * 
+     * Used internally by command groups to prevent double-scheduling.
+     * Do not call manually - handled automatically by SequentialCommandGroup
+     * and ParallelCommandGroup.
+     */
+    void setComposed(bool composed) { m_isComposed = composed; }
+    
+    /**
+     * @brief Check if command is part of a group
+     * @return True if command is composed in a group
+     * 
+     * Used internally by scheduler to prevent scheduling composed commands.
+     */
+    bool isComposed() const { return m_isComposed; }
 };
 
 // ============================================================================
 // COMMAND UTILITY CLASSES
 // ============================================================================
+// These classes provide common command patterns and utilities.
+// You typically don't instantiate these directly - use the decorator methods
+// like withTimeout() instead.
 
-// Wrapper command that adds a timeout to any command
+/**
+ * @brief Wrapper that adds a timeout to any command
+ * 
+ * Ends the wrapped command after a specified time, even if it hasn't finished.
+ * Use via cmd->withTimeout(seconds) instead of directly constructing.
+ */
 class TimeoutCommand : public CommandBase {
 private:
     std::unique_ptr<CommandBase> m_command;
@@ -161,7 +341,12 @@ public:
     std::string getName() const override { return m_command->getName() + "_WithTimeout(" + std::to_string(m_timeout) + "s)"; }
 };
 
-// Create a wrapper command that delegates to the original but has a custom name
+/**
+ * @brief Wrapper that gives a command a custom name
+ * 
+ * Delegates all behavior to wrapped command but reports a custom name for logging.
+ * Use via cmd->withName("CustomName") instead of directly constructing.
+ */
 class NamedCommand : public CommandBase {
 private:
     std::unique_ptr<CommandBase> m_command;
@@ -186,7 +371,12 @@ public:
     }
 };
 
-// Command that waits for a specified time
+/**
+ * @brief Command that waits for a specified duration
+ * 
+ * Does nothing except wait. Useful in sequential command groups to add delays.
+ * Example: new WaitCommand(1.0) waits for 1 second
+ */
 class WaitCommand : public CommandBase {
 private:
     double m_duration;
@@ -210,7 +400,12 @@ public:
     std::string getName() const override { return "Wait(" + std::to_string(m_duration) + "s)"; }
 };
 
-// RunFor command - executes action for specified duration in seconds
+/**
+ * @brief Command that executes an action for a specified duration
+ * 
+ * Runs a lambda function repeatedly for a given number of seconds, then ends.
+ * Example: RunForCommand(action, 2.0, subsystem) runs action for 2 seconds
+ */
 class RunForCommand : public CommandBase {
 private:
     std::function<void()> m_action;
@@ -253,7 +448,14 @@ public:
     std::string getName() const override { return "RunFor(" + std::to_string(m_duration) + "s)"; }
 };
 
-// Command that accepts lambdas for all lifecycle methods
+/**
+ * @brief Command that uses lambda functions for all lifecycle methods
+ * 
+ * Allows quick creation of commands without defining a new class.
+ * Useful for prototyping or simple one-off behaviors.
+ * 
+ * Parameters: onInit, onExecute, onEnd, isFinished, subsystems, name
+ */
 class FunctionalCommand : public CommandBase {
 private:
     std::function<void()> m_onInit = nullptr;
@@ -305,7 +507,13 @@ public:
     std::string getName() const override { return m_name; }
 };
 
-// Command that runs a single action and immediately finishes
+/**
+ * @brief Command that runs a single action and immediately finishes
+ * 
+ * Executes a lambda once in initialize(), then ends. Perfect for one-shot
+ * actions like toggling states or resetting positions.
+ * Example: InstantCommand(action, subsystem) runs action once
+ */
 class InstantCommand : public CommandBase {
 private:
     std::function<void()> m_action;
@@ -337,7 +545,17 @@ public:
 
 // ============================================================================
 // COMMAND GROUPS
-// SequentialCommandGroup: runs commands one after another
+// ============================================================================
+// Command groups compose multiple commands into complex behaviors
+
+/**
+ * @brief Runs commands one after another in sequence
+ * 
+ * Each command runs to completion before the next starts. The group finishes
+ * when all commands have finished. If interrupted, the current command is
+ * interrupted and remaining commands are skipped.
+ * Example: SequentialCommandGroup(cmd1, cmd2, cmd3) runs cmd1, then cmd2, then cmd3
+ */
 class SequentialCommandGroup : public CommandBase {
 private:
     std::vector<std::unique_ptr<CommandBase>> m_commands;
@@ -429,7 +647,16 @@ public:
     }
 };
 
-// ParallelCommandGroup: runs all commands at once; finishes when all complete
+/**
+ * @brief Runs multiple commands simultaneously
+ * 
+ * All commands start together and run in parallel. The group finishes when
+ * ALL commands have finished. Commands must NOT share subsystems or the
+ * program will crash immediately.
+ * 
+ * CRITICAL: Commands in parallel groups CANNOT share subsystems!
+ * Example: ParallelCommandGroup(driveCmd, intakeCmd) runs both at once (different subsystems)
+ */
 class ParallelCommandGroup : public CommandBase {
 private:
     std::vector<std::unique_ptr<CommandBase>> m_commands;
@@ -597,4 +824,4 @@ inline std::unique_ptr<CommandBase> CommandBase::andThen(const CommandBase* next
     return group;
 }
 
-#endif // COMMANDBASE_H_
+#endif // COMMAND_H_

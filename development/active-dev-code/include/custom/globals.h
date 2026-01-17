@@ -1,5 +1,4 @@
-#ifndef GLOBALS_H_
-#define GLOBALS_H_
+#pragma once
 
 #include "pros/motors.hpp"
 #include "lemlib/api.hpp"
@@ -61,4 +60,3 @@ namespace pulse {
 } // all global vars
 
 
-#endif // GLOBALS_H_

@@ -1,5 +1,4 @@
-#ifndef EXAMPLESUBSYSTEM_H_
-#define EXAMPLESUBSYSTEM_H_
+#pragma once
 
 #include "custom/subsystem/subsystemBase.h"
 
@@ -67,4 +66,3 @@ class ExampleSubsystem : public SubsystemBase {
 
 };
 
-#endif // EXAMPLESUBSYSTEM_H_

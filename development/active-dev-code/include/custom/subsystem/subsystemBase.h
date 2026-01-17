@@ -1,8 +1,8 @@
 // SubsystemBase.h
 // Abstract base class for all subsystems in the command scheduler system.
 // Subsystems represent hardware or logical units that can be updated periodically.
-#ifndef SUBSYSTEMBASE_H_
-#define SUBSYSTEMBASE_H_
+#ifndef SUBSYSTEM_H_
+#define SUBSYSTEM_H_
 
 #include "custom/globals.h"
 #include "custom/command/commandBase.h"
@@ -124,4 +124,4 @@ inline std::unique_ptr<CommandBase> SubsystemBase::runFor(std::function<void()> 
     return std::unique_ptr<CommandBase>(new RunForCommand(action, cycles, this));
 }
 
-#endif // SUBSYSTEMBASE_H_
+#endif // SUBSYSTEM_H_

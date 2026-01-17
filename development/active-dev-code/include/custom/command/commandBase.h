@@ -1,6 +1,6 @@
 // CommandBase.h
-#ifndef COMMANDBASE_H_
-#define COMMANDBASE_H_
+#ifndef COMMAND_H_
+#define COMMAND_H_
 
 #include "custom/globals.h"
 #include "pros/rtos.hpp"
@@ -597,4 +597,4 @@ inline std::unique_ptr<CommandBase> CommandBase::andThen(const CommandBase* next
     return group;
 }
 
-#endif // COMMANDBASE_H_
+#endif // COMMAND_H_

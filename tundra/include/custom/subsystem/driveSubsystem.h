@@ -1,5 +1,4 @@
-#ifndef DRIVESUBSYSTEM_H_
-#define DRIVESUBSYSTEM_H_
+#pragma once
 
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/controller.h"
@@ -54,4 +53,3 @@ class DriveSubsystem : public SubsystemBase {
         lemlib::Chassis m_chassis;
 };
 
-#endif // DRIVESUBSYSTEM_H_

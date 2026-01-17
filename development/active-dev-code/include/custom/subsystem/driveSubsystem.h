@@ -1,8 +1,8 @@
-#ifndef DRIVESUBSYSTEM_H_
-#define DRIVESUBSYSTEM_H_
+#pragma once
 
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/controller.h"
+#include "custom/assets.h"
 #include "lemlib/api.hpp"
 
 
@@ -32,6 +32,16 @@ class DriveSubsystem : public SubsystemBase {
                 inverted ?  -controller->get_analog(globalConst::drive::kLeftStickY) : controller->get_analog(globalConst::drive::kRightStickY));
         }
 
+        inline void exampleAutoPath() {
+            // set chassis pose
+            m_chassis.setPose(0, 0, 0);
+            // lookahead distance: 15 inches
+            // timeout: 2000 ms
+            m_chassis.follow(example_txt, 15, 5000);
+            // follow the next path, but with the robot going backwards
+            // m_chassis.follow(example2_txt, 15, 2000, false);
+        }
+
     private:
         // input curve for throttle and steer inputs during driver control
         lemlib::ExpoDriveCurve m_throttle_curve;
@@ -53,4 +63,3 @@ class DriveSubsystem : public SubsystemBase {
         lemlib::Chassis m_chassis;
 };
 
-#endif // DRIVESUBSYSTEM_H_

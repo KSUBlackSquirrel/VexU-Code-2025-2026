@@ -1,5 +1,4 @@
-#ifndef EXAMPLEDEFAULTCOMMAND_H_
-#define EXAMPLEDEFAULTCOMMAND_H_
+#pragma once
 
 #include "commandBase.h"
 #include "custom/subsystem/exampleSubsystem.h"
@@ -20,5 +19,3 @@ public:
 private:
     ExampleSubsystem* exampleSubsystem;
 };
-
-#endif // EXAMPLEDEFAULTCOMMAND_H_

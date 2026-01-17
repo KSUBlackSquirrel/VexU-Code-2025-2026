@@ -87,8 +87,8 @@ public:
      * @brief Set motor speed
      * @param speed Speed from -127 to 127
      */
-    void setSpeed(int speed) {
-        m_motor.move(speed);
+    void setSpeed(int percent) {
+        m_motor.move(global::MotorTools::percentToVelocity(percent, pros::MotorGearset::green));
     }
     
     /**

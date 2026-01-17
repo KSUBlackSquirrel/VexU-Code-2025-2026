@@ -1,5 +1,4 @@
-#ifndef INTAKESUBSYSTEM_H_
-#define INTAKESUBSYSTEM_H_
+#pragma once
 
 #include "custom/subsystem/subsystemBase.h"
 #include "lemlib/api.hpp"
@@ -24,4 +23,3 @@ class IntakeSubsystem : public SubsystemBase {
         pros::MotorGroup m_intakeMotor;
 };
 
-#endif // INTAKESUBSYSTEM_H_

@@ -1,5 +1,4 @@
-#ifndef INTAKECOMMAND_H_
-#define INTAKECOMMAND_H_
+#pragma once
 
 #include "commandBase.h"
 #include "custom/subsystem/intakeSubsystem.h"
@@ -34,5 +33,3 @@ private:
     IntakeSubsystem* m_subsystem;
     bool m_reverse;
 };
-
-#endif // INTAKECOMMAND_H_
