@@ -37,7 +37,7 @@ Today's Tasks:
 Reflection:
 	We successfully set up our PROS project for our example-code and pushed it to our repository on GitHub for easy collaboration. A V5 brain was configured for use with PROS and is able to run our compiled project. Team members verified they could clone the repository, build the project, and upload to the brain from their own machines. This cross-platform capability will be essential as we develop the framework over the coming weeks.
 
-**[PHOTO NEEDED: Screenshot of VS Code with PROS extension showing project structure]**
+![Screenshot of VS Code with PROS extension showing project structure](img/w02p01.png)
 **[PHOTO NEEDED: Terminal output showing successful project compilation and upload to brain]**
 
 09/13/2025

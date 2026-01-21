@@ -134,7 +134,7 @@ public:
 Reflection:
 	We successfully implemented `whileTrue()` functionality! The key improvements from our first attempt in Week 3 are: (1) Proper use of the `interrupted()` lifecycle method for cleanup, (2) Improved scheduler logic for command cancellation, and (3) Better state tracking in the ButtonBinder to detect when buttons are released. Testing confirmed that commands start smoothly when buttons are pressed and stop immediately when released. The `end(interrupted=true)` is reliably called for cleanup. This functionality will be essential for implementing intuitive operator controls.
 
-**[PHOTO NEEDED: Timing diagram showing whileTrue command lifecycle: button press → initialize → execute loop → button release → end(interrupted=true)]**
+![Timing diagram showing whileTrue command lifecycle: button press → initialize → execute loop → button release → end(interrupted=true)](img/w07p01.png)
 
 
 10/15/2025

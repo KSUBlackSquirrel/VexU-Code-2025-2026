@@ -213,4 +213,4 @@ Reflection:
 	
 	After this experience, we decided that the brain screen and serial output are more reliable than the controller screen for debugging purposes. The controller's message queue limitations make it less suitable for displaying real-time debug information. For now, we'll focus on using the brain screen and console output for debugging. We have plans to revisit the controller screen implementation later if we need driver-facing information, but for development and testing, the brain screen utilities work great.
 
-**[PHOTO NEEDED: Brain screen showing clean multi-line display without text overlap]**
+![Brain screen showing clean multi-line display without text overlap](img/w06p01.png)
