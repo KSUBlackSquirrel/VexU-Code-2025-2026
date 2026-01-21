@@ -73,5 +73,4 @@ Today's Tasks:
 Reflection:
 	We completed the architectural design for our command-based framework. This week's work focused on designing these three core components so the rest of the season's programming has a clean, organized structure to build on. By establishing clear responsibilities for each component and defining how they communicate, we've created a solid foundation that will make the actual implementation much more straightforward. Next week we'll begin implementing these designs in C++ code.
 
-**[PHOTO NEEDED: Architecture diagram showing Scheduler → Commands → Subsystems hierarchy with arrows showing communication flow]**
-**[PHOTO NEEDED: Command lifecycle flowchart showing initialize → execute → isFinished → end with decision points]**
+![Architecture diagram showing Scheduler → Commands → Subsystems hierarchy with arrows showing communication flow & Command lifecycle flowchart showing initialize → execute → isFinished → end with decision points](img/image.png)
