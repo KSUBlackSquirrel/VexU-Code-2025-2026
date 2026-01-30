@@ -54,5 +54,3 @@ Issue: Odometry inaccurate
 
 Reflection:
 Created comprehensive documentation for the drive system. This will save future team members time and confusion. The configuration guide makes it clear what needs to be changed for different robots, and the troubleshooting guide addresses common issues.
-
-**[PHOTO NEEDED: Quick reference card for common issues]**

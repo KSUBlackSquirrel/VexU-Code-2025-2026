@@ -129,8 +129,7 @@ void scheduleCommand(CommandBase* cmd) {
 Reflection:
 	We successfully implemented subsystem requirements and command interruption! Testing confirmed that the system correctly detects conflicts and safely transitions between commands. The `interrupted` parameter in `end()` allows commands to behave differently when interrupted versus finishing normally. For example, an autonomous command that's interrupted might log an error, while one that finishes normally logs success. This feature is essential for building reliable robot behaviors and prevents the hardware conflicts that plagued earlier testing.
 
-**[PHOTO NEEDED: Flowchart showing command interrupt sequence: Button B pressed → Scheduler detects conflict → Call Command A end(true) → Remove Command A → Start Command B]**
-
+![Flowchart showing command interrupt sequence: Button B pressed → Scheduler detects conflict → Call Command A end(true) → Remove Command A → Start Command B](img/w05p01.png)
 
 10/01/2025
 Today's Goals:

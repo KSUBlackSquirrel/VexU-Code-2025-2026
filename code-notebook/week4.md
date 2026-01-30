@@ -85,8 +85,7 @@ controller.setButtonCommand().onFalse(BUTTON_A, new StopIntakeCommand());
 Reflection:
 	We successfully refactored the controller binding API to use method chaining. The new syntax is more intuitive and makes it immediately clear when each command will execute. Testing confirmed that all bindings work correctly with the new API. The code is now easier to read, easier to teach to new programmers, and follows patterns from FRC robotics. This refactoring improves both code quality and team productivity.
 
-**[PHOTO NEEDED: Diagram showing method chaining flow: controller → setButtonCommand() → onTrue() → registers with scheduler]**
-
+![Diagram showing method chaining flow: controller → setButtonCommand() → whileTrue() → registers with scheduler](img/w04p01.png)
 
 09/24/2025
 Today's Goals:
