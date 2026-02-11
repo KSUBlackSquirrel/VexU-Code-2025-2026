@@ -142,4 +142,6 @@ No manual `scheduler.register()` calls needed - the framework handles it automat
 Reflection:
 Completed the auto-registration architecture for both controllers and subsystems. This makes the framework much more user-friendly - subsystems and controllers automatically register themselves without requiring manual setup code. The deferred registration pattern also solves the C++ global object initialization order problem. Both subsystems and controllers work identically now, making the framework consistent and predictable.
 
-**[PHOTO NEEDED: Complete initialize() sequence showing both auto-registrations]**
+
+![Complete initialize() sequence showing both auto-registrations](img/w09p01.png)
+

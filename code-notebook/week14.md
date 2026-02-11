@@ -102,10 +102,10 @@ cmd1.andThen(&cmd2).andThen(&cmd3);
 This decorator pattern is widely used in FRC code and makes sequential composition much more readable.
 
 Reflection:
-Major milestone achieved! We can now build complex autonomous routines by combining simple commands. By following FRC's proven patterns, we're building on years of competitive robotics experience rather than reinventing the wheel. The sequential group walks through commands one at a time, while the parallel group manages multiple commands simultaneously (with proper subsystem conflict checking). The andThen() decorator makes sequential composition even cleaner. These building blocks will make our autonomous programming much more intuitive and maintainable.
+Major milestone achieved! We can now build complex autonomous routines by combining simple commands.  The sequential group walks through commands one at a time, while the parallel group manages multiple commands simultaneously (with proper subsystem conflict checking). The andThen() decorator makes sequential composition even cleaner. These building blocks will make our autonomous programming much more intuitive and maintainable.
 
-**[PHOTO NEEDED: SequentialCommandGroup diagram showing commands running in sequence]**
-**[PHOTO NEEDED: ParallelCommandGroup diagram showing commands running simultaneously]**
+![SequentialCommandGroup diagram showing commands running in sequence](img/w14p01.png)
+![ParallelCommandGroup diagram showing commands running simultaneously](img/w14p02.png)
 
 
 12/03/2025

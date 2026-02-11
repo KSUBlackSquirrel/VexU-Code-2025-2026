@@ -189,8 +189,7 @@ public:
 Reflection:
 	We successfully implemented a basic but functional scheduler and button binding system! Commands can now be triggered by button presses and execute continuously until interrupted by another command, because they both require the same subsystem. We tested with the Up and Down commands controlling the example motor subsystem. Pressing the UP button spins the motor forward, pressing the DOWN button immediately stops the forward motion and spins it backward. This proves the subsystem conflict resolution is working.
 
-**[PHOTO NEEDED: Diagram showing button press → ButtonBinder → Scheduler → Command → Subsystem flow]**
-
+![Diagram showing button press → ButtonBinder → Scheduler → Command](img/w03p01.png)
 
 09/20/2025
 Today's Goals:

@@ -209,8 +209,7 @@ void robotInit() {
 Reflection:
 	We successfully created the complete drive system architecture! The DriveSubsystem handles all the motor control and LemLib integration, while the DriveCommand simply reads joysticks and passes values to the subsystem. The code compiles cleanly and the structure is solid. The clean separation between DriveCommand and DriveSubsystem makes the code easy to understand and maintain. Tomorrow we'll test it on the driveable frame to validate that everything works correctly.
 
-**[PHOTO NEEDED: Diagram showing DriveSubsystem → LemLib → Motor Groups architecture with arrows showing data flow]**
-
+![Diagram showing DriveSubsystem → LemLib → Motor Groups architecture with arrows showing data flow](img/w11p01.png)
 
 11/05/2025
 Today's Goals:
