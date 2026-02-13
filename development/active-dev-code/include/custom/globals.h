@@ -29,12 +29,12 @@ const static pros::controller_analog_e_t kRightStickY = pros::E_CONTROLLER_ANALO
 const static int joystickDeadband = 1;
 const static double expoCurve = 1.0;
 
-const static std::vector<std::int8_t> kLeftMotorsID = {-10,-9,-8};
-const static std::vector<std::int8_t> kRightMotorsID = {13,11,12};
-const static pros::v5::MotorGears kDriveTrainColor = pros::MotorGearset::green;
-const static float kWheelDiameter = lemlib::Omniwheel::NEW_325;
-const static int kWheelTrack = 13.625;
-const static int kWheelRPM = 400;
+const static std::vector<std::int8_t> kLeftMotorsID = {-10,9,-8};
+const static std::vector<std::int8_t> kRightMotorsID = {7,-6,5};
+const static pros::v5::MotorGears kDriveTrainColor = pros::MotorGearset::blue;
+const static float kWheelDiameter = lemlib::Omniwheel::NEW_275;
+const static float kWheelTrack = 11.0;
+const static int kWheelRPM = 600;
 const static int kHorizontalDrift = 2;
 
 const static int kIMUid = 5;

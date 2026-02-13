@@ -33,21 +33,21 @@ const static std::vector<std::int8_t> kLeftMotorsID = {-8,9,-10};
 const static std::vector<std::int8_t> kRightMotorsID = {5,-6,7};
 const static pros::v5::MotorGears kDriveTrainColor = pros::MotorGearset::blue;
 const static float kWheelDiameter = lemlib::Omniwheel::NEW_275;
-const static int kWheelTrack = 10.5;
+const static float kWheelTrack = 11.0;
 const static int kWheelRPM = 600;
 const static int kHorizontalDrift = 2;
 
-const static int kIMUid = 5;
+const static int kIMUid = 14;
 
 // const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_BRAKE;
 const static pros::motor_brake_mode_e kBreakMode = pros::E_MOTOR_BRAKE_COAST;
 } // namespace drive vars
 
 namespace intake {
-    const static std::vector<std::int8_t> kIntakeMotorsID = {-19, 20};
+    const static std::vector<std::int8_t> kIntakeMotorsID = {-16, 12};
     const static pros::v5::MotorGears kIntakeMotorColor = pros::MotorGearset::blue;
 
-    const static std::vector<std::int8_t> kOuttakeMotorsID = {-13, 14};
+    const static std::vector<std::int8_t> kOuttakeMotorsID = {11};
     const static pros::v5::MotorGears kOuttakeMotorColor = pros::MotorGearset::blue;
 }
 
