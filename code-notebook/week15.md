@@ -123,9 +123,7 @@ void configureBindings() {
 Reflection:
 Successfully implemented intake and outtake as separate subsystems! The implementation is quick and straightforward. Each subsystem has basic run() and stop() methods with forward/reverse support. This gets us functional game piece handling on the competition robot right away. The commands use whileTrue() so motors run only while buttons are held. We can refine and optimize the implementation later as needed, but for now this simple approach works well for practice.
 
-**[PHOTO NEEDED: Intake and outtake mechanisms on robot]**
-**[PHOTO NEEDED: Controller layout showing R1/R2 for intake, L1/L2 for outtake]**
-
+![Controller layout showing R1/R2 for intake, L1/L2 for outtake](img/w15p01.png)
 
 12/10/2025
 Today's Goals:
@@ -171,7 +169,5 @@ Minor Adjustments:
 
 Reflection:
 Intake and outtake subsystems are working perfectly on the robot! The separate subsystem design was the right choice. We can run both simultaneously without conflicts. The simple implementation is proving effective for competition use. Ready for competition practice, and we can add more advanced features (current limiting, sensor feedback, etc.) in future iterations as needed.
-
-**[PHOTO NEEDED: Team testing intake/outtake on practice field]**
 
 
