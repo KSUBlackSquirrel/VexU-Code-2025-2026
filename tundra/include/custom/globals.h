@@ -5,6 +5,7 @@
 #include <vector>
 
 
+
 namespace globalConst {
 
 namespace MotorTools {
@@ -49,6 +50,11 @@ namespace intake {
 
     const static std::vector<std::int8_t> kOuttakeMotorsID = {11};
     const static pros::v5::MotorGears kOuttakeMotorColor = pros::MotorGearset::blue;
+}
+
+namespace outtake {
+    const static char outtakeGateID = 'A';
+    const static char outtakeLiftID = 'B';
 }
 
 } // all global consts

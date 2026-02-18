@@ -15,6 +15,10 @@ std::unique_ptr<IntakeCommand> intakeBackwordCommand;
 std::unique_ptr<OuttakeCommand> outtakeForwardCommand;
 std::unique_ptr<OuttakeCommand> outtakeBackwordCommand;
 
+std::unique_ptr<GateCommand> openGateCommand;
+std::unique_ptr<GateCommand> closeGateCommand;
+std::unique_ptr<LiftCommand> openLiftCommand;
+std::unique_ptr<LiftCommand> closeLiftCommand;
 
 
 
@@ -24,6 +28,12 @@ void configureBindings() {
     controller.R2().whileTrue(intakeBackwordCommand.get());
     controller.R1().whileTrue(outtakeForwardCommand.get());
     controller.R2().whileTrue(outtakeBackwordCommand.get());
+
+    //Bindings for Gate & Lift (temporary)
+    controller.A().onTrue(openGateCommand.get());
+    controller.B().onTrue(closeGateCommand.get());
+    controller.X().onTrue(openLiftCommand.get());
+    controller.Y().onTrue(closeLiftCommand.get());
 
     // controller.R1().onTrue(new InstantCommand([]{intakeSub->runIn();}, intakeSub.get()));
     // controller.R1().onFalse(new InstantCommand([]{intakeSub->stop();}, intakeSub.get()));
@@ -44,6 +54,10 @@ void robotInit() {
     outtakeForwardCommand = std::make_unique<OuttakeCommand>(outtakeSub.get());
     outtakeBackwordCommand = std::make_unique<OuttakeCommand>(outtakeSub.get(), true);
 
+    openGateCommand = std::make_unique<GateCommand>(outtakeSub.get(), true);
+    closeGateCommand = std::make_unique<GateCommand>(outtakeSub.get(), false);
+    openLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), true);
+    closeLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), false);
     
     driveSub->setDefaultCommand(driveCommand.get());
 }

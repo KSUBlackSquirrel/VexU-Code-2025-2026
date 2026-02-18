@@ -55,6 +55,10 @@
 #include "custom/subsystem/driveSubsystem.h"
 #include "custom/command/runIntakeCommand.h"
 #include "custom/command/runOuttakeCommand.h"
+#include "custom/command/gateCommand.h"
+#include "custom/command/liftCommand.h"
+
+
 #include "custom/subsystem/intakeSubsystem.h"
 #include "custom/subsystem/outtakeSubsystem.h"
 
