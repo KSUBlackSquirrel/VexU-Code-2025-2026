@@ -48,22 +48,6 @@
 #include "custom/subsystem/subsystemBase.h"
 #include "custom/command/commandBase.h"
 
-/**
- * You should add more #includes here
- */
-#include "custom/command/driveCommand.h"
-#include "custom/subsystem/driveSubsystem.h"
-#include "custom/command/runIntakeCommand.h"
-#include "custom/command/runOuttakeCommand.h"
-#include "custom/command/gateCommand.h"
-#include "custom/command/liftCommand.h"
-
-
-#include "custom/subsystem/intakeSubsystem.h"
-#include "custom/subsystem/outtakeSubsystem.h"
-
-
-
 
 /**
  * If you find doing pros::Motor() to be tedious and you'd prefer just to do

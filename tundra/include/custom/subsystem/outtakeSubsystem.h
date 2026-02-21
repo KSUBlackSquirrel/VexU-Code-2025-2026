@@ -7,12 +7,11 @@
 class OuttakeSubsystem : public SubsystemBase {
     public:
         OuttakeSubsystem() :
-            m_outtakeMotor(globalConst::intake::kOuttakeMotorsID, 
-                globalConst::intake::kOuttakeMotorColor), 
-                pneumaticLift(globalConst::outtake::outtakeLiftID, LOW), 
-                pneumaticGate(globalConst::outtake::outtakeGateID, LOW)
+            m_outtakeMotor(globalConst::intake::kOuttakeMotorsID, globalConst::intake::kOuttakeMotorColor), 
+            pneumaticLift(globalConst::outtake::outtakeLiftID, LOW), 
+            pneumaticGate(globalConst::outtake::outtakeGateID, LOW)
         {
-            m_outtakeMotor.set_brake_mode_all(globalConst::drive::kBreakMode);
+            m_outtakeMotor.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
         }
 
         inline void run(bool reverse=false) {
@@ -33,8 +32,8 @@ class OuttakeSubsystem : public SubsystemBase {
 
     private:
         pros::MotorGroup m_outtakeMotor;
-        pros::ADIDigitalOut pneumaticLift;
-        pros::ADIDigitalOut pneumaticGate;
+        pros::adi::DigitalOut pneumaticLift;
+        pros::adi::DigitalOut pneumaticGate;
 
         bool outtakeGate;
         bool outtakeLift;

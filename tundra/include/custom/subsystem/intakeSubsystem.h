@@ -9,7 +9,7 @@ class IntakeSubsystem : public SubsystemBase {
         IntakeSubsystem() :
             m_intakeMotor(globalConst::intake::kIntakeMotorsID, globalConst::intake::kIntakeMotorColor)
         {
-            m_intakeMotor.set_brake_mode_all(globalConst::drive::kBreakMode);
+            m_intakeMotor.set_brake_mode_all(pros::E_MOTOR_BRAKE_HOLD);
         }
 
         inline void run(bool reverse=false) {

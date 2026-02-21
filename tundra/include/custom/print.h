@@ -13,7 +13,29 @@ inline void printf(const char* fmt, ...) {
     va_start(args, fmt);
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
-    ::printf("%s", buf);
+    // Sanitize output: replace non-printable or non-ASCII bytes to avoid
+    // terminal decode crashes (pros-cli may choke on invalid UTF-8 bytes).
+    char out[512];
+    size_t in_len = strlen(buf);
+    size_t out_pos = 0;
+    for (size_t i = 0; i < in_len && out_pos + 1 < sizeof(out); ++i) {
+        unsigned char c = static_cast<unsigned char>(buf[i]);
+        // allow common printable ASCII and newline/tab
+        if (c >= 0x20 && c <= 0x7E) {
+            out[out_pos++] = static_cast<char>(c);
+        } else if (c == '\n' || c == '\r' || c == '\t') {
+            out[out_pos++] = static_cast<char>(c);
+        } else {
+            // replace any control or non-ASCII byte with '?'
+            out[out_pos++] = '?';
+        }
+    }
+    // ensure newline-termination
+    if (out_pos == 0 || out[out_pos - 1] != '\n') {
+        if (out_pos + 1 < sizeof(out)) out[out_pos++] = '\n';
+    }
+    out[out_pos] = '\0';
+    ::printf("%s", out);
 }
 
 inline void clearScreen(int line) {

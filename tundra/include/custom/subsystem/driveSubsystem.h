@@ -13,17 +13,38 @@ class DriveSubsystem : public SubsystemBase {
             m_left_motor_group(globalConst::drive::kLeftMotorsID, globalConst::drive::kDriveTrainColor),
             m_right_motor_group(globalConst::drive::kRightMotorsID, globalConst::drive::kDriveTrainColor),
             m_drivetrain(&m_left_motor_group, &m_right_motor_group, globalConst::drive::kWheelTrack, globalConst::drive::kWheelDiameter, globalConst::drive::kWheelRPM, globalConst::drive::kHorizontalDrift),
-            m_sensors(nullptr, nullptr, nullptr, nullptr, nullptr),
-            m_lateral_controller(18, 0, 6, 0, 1, 100, 3, 500, 0),
-            m_angular_controller(4, 0, 29, 0, 1, 100, 3, 500, 0),
+            m_imu(globalConst::drive::kIMUid),
+            m_sensors(
+                nullptr, // vertical tracking wheel 1, set to null
+                nullptr, // vertical tracking wheel 2, set to nullptr as we are using IMEs
+                nullptr, // horizontal tracking wheel 1
+                nullptr, // horizontal tracking wheel 2, set to nullptr as we don't have a second one
+                &m_imu // inertial sensor
+            ),
+            m_lateral_controller(
+                globalConst::drive::kl_kp,
+                globalConst::drive::kl_ki,
+                globalConst::drive::kl_kd,
+                globalConst::drive::kl_anti_windup,
+                globalConst::drive::kl_small_error_range,
+                globalConst::drive::kl_small_error_range_timeout,
+                globalConst::drive::kl_large_error_range,
+                globalConst::drive::kl_large_error_range_timeout,
+                globalConst::drive::kl_acceleration),
+            m_angular_controller(
+                globalConst::drive::ka_kp,
+                globalConst::drive::ka_ki,
+                globalConst::drive::ka_kd,
+                globalConst::drive::ka_anti_windup,
+                globalConst::drive::ka_small_error_range,
+                globalConst::drive::ka_small_error_range_timeout,
+                globalConst::drive::ka_large_error_range,
+                globalConst::drive::ka_large_error_range_timeout,
+                globalConst::drive::ka_acceleration),
             m_chassis(m_drivetrain, m_lateral_controller, m_angular_controller, m_sensors, &m_throttle_curve, &m_steer_curve)
         {
             m_chassis.calibrate(); // calibrate sensors
             m_chassis.setBrakeMode(globalConst::drive::kBreakMode);
-        }
-
-        inline lemlib::Pose pos(){
-            return m_chassis.getPose();
         }
 
         inline void tankDrive(Controller* controller, bool inverted){
@@ -31,6 +52,7 @@ class DriveSubsystem : public SubsystemBase {
                 inverted ? -controller->get_analog(globalConst::drive::kRightStickY) : controller->get_analog(globalConst::drive::kLeftStickY),
                 inverted ?  -controller->get_analog(globalConst::drive::kLeftStickY) : controller->get_analog(globalConst::drive::kRightStickY));
         }
+
 
     private:
         // input curve for throttle and steer inputs during driver control
@@ -40,6 +62,8 @@ class DriveSubsystem : public SubsystemBase {
         pros::MotorGroup m_left_motor_group;
         pros::MotorGroup m_right_motor_group;
         lemlib::Drivetrain m_drivetrain;
+
+        pros::Imu m_imu;
 
         // odometry settings
         lemlib::OdomSensors m_sensors;
