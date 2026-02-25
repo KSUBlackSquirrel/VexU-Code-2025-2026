@@ -3,55 +3,61 @@
 Controller controller(globalConst::drive::kMainControllerID);
 
 // Add Subsystems Here
-std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
-std::unique_ptr<DriveSubsystem> driveSub = std::make_unique<DriveSubsystem>();
+// std::unique_ptr<ExampleSubsystem> exampleSub = std::make_unique<ExampleSubsystem>();
+std::unique_ptr<DriveSubsystem> driveSub;
 
 // Example factory calls for CommandBase using ExampleSubsystem
-std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
-std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
-std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
-std::unique_ptr<CommandBase> runBackFor = exampleSub->runFor([]{ exampleSub->backward(); }, 2.0);
+// std::unique_ptr<CommandBase> run = exampleSub->run([]{ exampleSub->forward(); }); 
+// std::unique_ptr<CommandBase> runOnce = exampleSub->runOnce([]{ exampleSub->forward(); }); 
+// std::unique_ptr<CommandBase> runUntil = exampleSub->runUntil([]{ exampleSub->forward(); }, []{ return exampleSub->getPosition() > 300; }); 
+// std::unique_ptr<CommandBase> runFor = exampleSub->runFor([]{ exampleSub->forward(); }, 2.0);
+// std::unique_ptr<CommandBase> runBackFor = exampleSub->runFor([]{ exampleSub->backward(); }, 2.0);
 
 // std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get())->ignoringDisable();
 
 // Default commands
 // std::unique_ptr<CommandBase> holdCommand = std::make_unique<Hold>(exampleSub.get())->ignoringDisable();
 
-std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
+// std::unique_ptr<CommandBase> pulseCommand = std::make_unique<Pulse>(exampleSub.get());
 
 // Example command variations
 // std::unique_ptr<CommandBase> timeoutCommand = std::make_unique<Pulse>(exampleSub.get())->withTimeout(3.0);
 // std::unique_ptr<CommandBase> namedCommand = std::make_unique<Pulse>(exampleSub.get())->withName("MyCustomPulse");
 // std::unique_ptr<CommandBase> waitCommand = std::make_unique<WaitCommand>(5.0);
-std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
-    [](){ exampleSub->forward(); },     // initialize
-    [](){ /* execute logic */ },        // execute  
-    [](bool interrupted){ 
-        customPrint::screenPrint(8, "interrupted type: %s", interrupted ? "true" : "false");
-        exampleSub->stop(); 
-    }, // end
-    [](){ return false; },              // isFinished
-    std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
-    "Functional"                         // name
-);
+// std::unique_ptr<CommandBase> functionalCommand = std::make_unique<FunctionalCommand>(
+//     [](){ exampleSub->forward(); },     // initialize
+//     [](){ /* execute logic */ },        // execute  
+//     [](bool interrupted){ 
+//         customPrint::screenPrint(8, "interrupted type: %s", interrupted ? "true" : "false");
+//         exampleSub->stop(); 
+//     }, // end
+//     [](){ return false; },              // isFinished
+//     std::initializer_list<SubsystemBase*>{exampleSub.get()}, // subsystems
+//     "Functional"                         // name
+// );
 // std::unique_ptr<CommandBase> cancelIncomingCommand = std::make_unique<Pulse>(exampleSub.get())->withInterruptBehavior(InterruptionBehavior::kCancelIncoming);
 
 
-std::unique_ptr<CommandBase> groupS = std::make_unique<SequentialCommandGroup>(
-    runFor.get(),
-    runBackFor.get()
-);
+// std::unique_ptr<CommandBase> groupS = std::make_unique<SequentialCommandGroup>(
+//     runFor.get(),
+//     runBackFor.get()
+// );
 
-std::unique_ptr<CommandBase> groupP = std::make_unique<ParallelCommandGroup>(
-    runFor.get()
-    // runBackFor.get()
-);
+// std::unique_ptr<CommandBase> groupP = std::make_unique<ParallelCommandGroup>(
+//     runFor.get()
+//     // runBackFor.get()
+// );
 
-std::unique_ptr<CommandBase> alsoGroup = runFor->andThen(runBackFor.get());
+// std::unique_ptr<CommandBase> alsoGroup = runFor->andThen(runBackFor.get());
 
-std::unique_ptr<CommandBase> stop = std::make_unique<InstantCommand>([]{exampleSub->stop();}, exampleSub.get());
+// std::unique_ptr<CommandBase> stop = std::make_unique<InstantCommand>([]{exampleSub->stop();}, exampleSub.get());
 std::unique_ptr<CommandBase> autoPath = std::make_unique<InstantCommand>([]{driveSub->exampleAutoPath();}, driveSub.get());
+std::unique_ptr<CommandBase> auto90 = std::make_unique<InstantCommand>([]{driveSub->turn90();}, driveSub.get());
+std::unique_ptr<CommandBase> increaseP = std::make_unique<InstantCommand>([]{driveSub->increaseP();}, driveSub.get());
+std::unique_ptr<CommandBase> increaseD = std::make_unique<InstantCommand>([]{driveSub->increaseD();}, driveSub.get());
+std::unique_ptr<CommandBase> decreaseP = std::make_unique<InstantCommand>([]{driveSub->decreaseP();}, driveSub.get());
+std::unique_ptr<CommandBase> decreaseD = std::make_unique<InstantCommand>([]{driveSub->decreaseD();}, driveSub.get());
+
 
 // YOU CANT DO THIS
 // std::unique_ptr<CommandBase> addToBadGroup = std::make_unique<InstantCommand>([]{
@@ -90,20 +96,28 @@ void configureBindings() {
     // controller.LEFT().onTrue(runUntil.get());
 
 
-    controller.UP().onTrue(runFor.get());
-    controller.RIGHT().onTrue(runBackFor.get());
-    controller.LEFT().onTrue(groupS.get());
-    controller.DOWN().onTrue(alsoGroup.get());
+    // controller.UP().onTrue(runFor.get());
+    // controller.RIGHT().onTrue(runBackFor.get());
+    // controller.LEFT().onTrue(groupS.get());
+    // controller.DOWN().onTrue(alsoGroup.get());
 
-    controller.A().onTrue(stop.get());
-    controller.B().onTrue(groupP.get());
+    // controller.A().onTrue(stop.get());
+    // controller.B().onTrue(groupP.get());
+
+    controller.B().onTrue(auto90.get());
+
+    controller.UP().onTrue(increaseP.get());
+    controller.RIGHT().onTrue(increaseD.get());
+    controller.LEFT().onTrue(decreaseP.get());
+    controller.DOWN().onTrue(decreaseD.get());
     
 }
 
 
 
 void robotInit() {
-    exampleSub->setDefaultCommand(stop.get());
+    // exampleSub->setDefaultCommand(stop.get());
+    driveSub = std::make_unique<DriveSubsystem>();
 }
 
 void robotDisabled() {
@@ -129,7 +143,7 @@ void robotTeleop() {
     // pros::screen::print(pros::E_TEXT_MEDIUM, 7, "     ");
     // pros::screen::print(pros::E_TEXT_MEDIUM, 8, "         ");
 
-    CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
-    customPrint::screenPrint(2, "Current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
-    customPrint::screenPrint(3, "Queue size: %d", static_cast<int>(Scheduler::getInstance().size()));
+    // CommandBase* currentCmd = exampleSub.get()->getCurrentCommand();
+    // customPrint::screenPrint(2, "Current cmd: %s", currentCmd ? currentCmd->getName().c_str() : "None");
+    // customPrint::screenPrint(3, "Queue size: %d", static_cast<int>(Scheduler::getInstance().size()));
 }

@@ -37,7 +37,17 @@ const static float kWheelTrack = 11.0;
 const static int kWheelRPM = 600;
 const static int kHorizontalDrift = 2;
 
-const static int kIMUid = 5;
+const static int kIMUid = 14;
+
+const static int ka_kp = 2;
+const static int ka_ki = 0;
+const static int ka_kd = 10;
+const static int ka_anti_windup = 0;
+const static int ka_small_error_range = 1;
+const static int ka_small_error_range_timeout = 100;
+const static int ka_large_error_range = 500;
+const static int ka_large_error_range_timeout = 3;
+const static int ka_acceleration = 0;
 } // namespace drive vars
 
 namespace example {

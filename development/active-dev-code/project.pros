@@ -636,7 +636,7 @@
     },
     "upload_options": {
       "icon": "X",
-      "slot": 8
+      "slot": 6
     },
     "use_early_access": false
   }

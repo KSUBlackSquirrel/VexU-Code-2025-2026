@@ -81,6 +81,8 @@ void robotDisabled() {
 
 void robotCompInit() {}
 
-void robotAuto() {}
+void robotAuto() {
+    driveSub.get()->AngularPID();
+}
 
 void robotTeleop() {}

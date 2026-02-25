@@ -98,7 +98,8 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-    run_helper(true, robotAuto);
+    // run_helper(true, robotAuto);
+    robotAuto();
 }
 
 /**
