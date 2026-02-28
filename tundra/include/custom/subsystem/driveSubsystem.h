@@ -53,14 +53,24 @@ class DriveSubsystem : public SubsystemBase {
                 inverted ?  -controller->get_analog(globalConst::drive::kLeftStickY) : controller->get_analog(globalConst::drive::kRightStickY));
         }
 
+        //These are specifically for PID tuning
+
         inline void AngularPID() {
-            // Tune Angular PID
-            // set position to x:0, y:0, heading:0
-            m_chassis.setPose(0, 0, 0);
             // turn to face heading 90 with a very long timeout
-            m_chassis.turnToHeading(90, 1000000);
+            m_chassis.turnToHeading(180, 1000000);
         }
 
+
+        inline void LinearPID() {
+            // turn to face heading 90 with a very long timeout
+            m_chassis.moveToPoint(0, 48, 1000000);
+        }
+
+        inline void resetPos() {
+            // Tune PID
+            // set position to x:0, y:0, heading:0
+            m_chassis.setPose(0, 0, 0);
+        }
 
     private:
         // input curve for throttle and steer inputs during driver control

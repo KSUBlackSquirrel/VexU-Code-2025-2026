@@ -8,6 +8,7 @@
 #include "custom/command/runOuttakeCommand.h"
 #include "custom/command/gateCommand.h"
 #include "custom/command/liftCommand.h"
+#include "custom/command/testAutoCommand.h"
 
 #include "custom/subsystem/intakeSubsystem.h"
 #include "custom/subsystem/outtakeSubsystem.h"
@@ -34,6 +35,8 @@ std::unique_ptr<GateCommand> closeGateCommand;
 std::unique_ptr<LiftCommand> openLiftCommand;
 std::unique_ptr<LiftCommand> closeLiftCommand;
 
+std::unique_ptr<TestAutoCommand> testAutoCommand;
+
 
 // Add Any Button Bindings Here
 void configureBindings() {
@@ -50,6 +53,8 @@ void configureBindings() {
 
     // controller.R1().onTrue(new InstantCommand([]{intakeSub->runIn();}, intakeSub.get()));
     // controller.R1().onFalse(new InstantCommand([]{intakeSub->stop();}, intakeSub.get()));
+
+    controller.UP().onTrue(testAutoCommand.get());
 }
 
 
@@ -71,6 +76,8 @@ void robotInit() {
     closeGateCommand = std::make_unique<GateCommand>(outtakeSub.get(), false);
     openLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), true);
     closeLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), false);
+
+    testAutoCommand = std::make_unique<TestAutoCommand>(driveSub.get());
     
     driveSub->setDefaultCommand(driveCommand.get());
 }
@@ -82,7 +89,7 @@ void robotDisabled() {
 void robotCompInit() {}
 
 void robotAuto() {
-    driveSub.get()->AngularPID();
+    driveSub.get()->LinearPID();
 }
 
 void robotTeleop() {}
