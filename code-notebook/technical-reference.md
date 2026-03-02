@@ -668,6 +668,19 @@ void DriveCommand(DriveSubsystem* subsystem);
 
 ---
 
+## PID Tuning Guidelines
+Because many teams rely on LemLib (or similar libraries) for closed‑loop motion, our framework includes basic support for running PID routines in both heading and linear dimensions. Proper tuning is critical were poorly‑tuned gains lead to oscillation, sluggish response, or commands that terminate immediately. The following procedure has worked reliably on our robots:
+
+1. **Start with conservative gains** – set P to 2 and D to 10. Integral (I) is left at 0 unless significant steady‑state error is observed; our drivetrain is effectively two‑dimensional so drift is minimal.
+2. **Tune derivative first.**  Increase D gradually while running the loop (either angular or linear). Continue until oscillations around the target disappears.
+3. **Tune proportional next.**  Raise P and repeat tuning D until the system becomes more aggressive but still stable. If increasing P induces oscillation that D can no longer dampen, fall back to the previous P/D pair that was stable.
+
+![pid graph](/img/pd_tuning_flowchart.png)
+
+> **Tip:** During initial tuning, run the PID helper outside the scheduler (e.g. directly from `auto()`) to avoid unintended cancellations; once gains are stable you can wrap the call in a command `execute()` loop for integration.
+
+---
+
 ## Common Issues & Solutions
 
 ### Scheduler Issues
