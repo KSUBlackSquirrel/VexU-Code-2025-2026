@@ -2,17 +2,19 @@
 /**
  * You should add more #includes here
  */
-#include "custom/command/driveCommand.h"
-#include "custom/subsystem/driveSubsystem.h"
-#include "custom/command/runIntakeCommand.h"
-#include "custom/command/runOuttakeCommand.h"
-#include "custom/command/gateCommand.h"
-#include "custom/command/liftCommand.h"
-#include "custom/command/testAutoCommand.h"
-
 #include "custom/subsystem/intakeSubsystem.h"
 #include "custom/subsystem/outtakeSubsystem.h"
+#include "custom/subsystem/driveSubsystem.h"
 
+#include "custom/command/driveCommand.h"
+#include "custom/command/runIntakeCommand.h"
+#include "custom/command/runOuttakeCommand.h"
+
+#include "custom/command/gateCommand.h"
+#include "custom/command/liftCommand.h"
+#include "custom/command/chuteCommand.h"
+
+// #include "custom/command/testAutoCommand.h"
 
 
 Controller controller(globalConst::drive::kMainControllerID);
@@ -30,31 +32,28 @@ std::unique_ptr<IntakeCommand> intakeBackwordCommand;
 std::unique_ptr<OuttakeCommand> outtakeForwardCommand;
 std::unique_ptr<OuttakeCommand> outtakeBackwordCommand;
 
-std::unique_ptr<GateCommand> openGateCommand;
-std::unique_ptr<GateCommand> closeGateCommand;
-std::unique_ptr<LiftCommand> openLiftCommand;
-std::unique_ptr<LiftCommand> closeLiftCommand;
+std::unique_ptr<GateCommand> toggleGateCommand;
+std::unique_ptr<LiftCommand> toggleLiftCommand;
+std::unique_ptr<ChuteCommand> toggleChuteCommand;
 
-std::unique_ptr<TestAutoCommand> testAutoCommand;
+// std::unique_ptr<TestAutoCommand> testAutoCommand;
 
 
 // Add Any Button Bindings Here
 void configureBindings() {
     controller.R1().whileTrue(intakeForwardCommand.get());
-    controller.R2().whileTrue(intakeBackwordCommand.get());
     controller.R1().whileTrue(outtakeForwardCommand.get());
+
+    controller.R2().whileTrue(intakeBackwordCommand.get());
     controller.R2().whileTrue(outtakeBackwordCommand.get());
 
-    //Bindings for Gate & Lift (temporary)
-    controller.A().onTrue(openGateCommand.get());
-    controller.B().onTrue(closeGateCommand.get());
-    controller.X().onTrue(openLiftCommand.get());
-    controller.Y().onTrue(closeLiftCommand.get());
+    controller.L1().onTrue(toggleGateCommand.get());
+    controller.L2().onTrue(toggleLiftCommand.get());
 
-    // controller.R1().onTrue(new InstantCommand([]{intakeSub->runIn();}, intakeSub.get()));
-    // controller.R1().onFalse(new InstantCommand([]{intakeSub->stop();}, intakeSub.get()));
+    controller.UP().onTrue(toggleChuteCommand.get());
 
-    controller.UP().onTrue(testAutoCommand.get());
+
+    // controller.UP().onTrue(testAutoCommand.get());
 }
 
 
@@ -72,12 +71,11 @@ void robotInit() {
     outtakeForwardCommand = std::make_unique<OuttakeCommand>(outtakeSub.get());
     outtakeBackwordCommand = std::make_unique<OuttakeCommand>(outtakeSub.get(), true);
 
-    openGateCommand = std::make_unique<GateCommand>(outtakeSub.get(), true);
-    closeGateCommand = std::make_unique<GateCommand>(outtakeSub.get(), false);
-    openLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), true);
-    closeLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get(), false);
+    toggleGateCommand = std::make_unique<GateCommand>(outtakeSub.get());
+    toggleLiftCommand = std::make_unique<LiftCommand>(outtakeSub.get());
+    toggleChuteCommand = std::make_unique<ChuteCommand>(intakeSub.get());
 
-    testAutoCommand = std::make_unique<TestAutoCommand>(driveSub.get());
+    // testAutoCommand = std::make_unique<TestAutoCommand>(driveSub.get());
     
     driveSub->setDefaultCommand(driveCommand.get());
 }

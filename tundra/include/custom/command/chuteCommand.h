@@ -1,20 +1,20 @@
 #pragma once
 
 #include "commandBase.h"
-#include "custom/subsystem/outtakeSubsystem.h"
+#include "custom/subsystem/intakeSubsystem.h"
 #include "custom/controller.h"
 #include "custom/globals.h"
 
 class SubsystemBase;
 
-class GateCommand: public CommandBase {
+class ChuteCommand: public CommandBase {
 public:
-    GateCommand(OuttakeSubsystem* sub) { 
+    ChuteCommand(IntakeSubsystem* sub) { 
         m_subsystem = sub;
     }
 
     inline void execute() override {
-        m_subsystem->toggleGate();
+        m_subsystem->toggleChute();
     }
 
     inline void end(bool interrupted) override {
@@ -23,9 +23,9 @@ public:
     inline bool isFinished() override { return true; }
 
     inline CommandBase* clone() const override {
-        return new GateCommand(*this);
+        return new ChuteCommand(*this);
     }
 
 private:
-    OuttakeSubsystem* m_subsystem;
+    IntakeSubsystem* m_subsystem;
 };

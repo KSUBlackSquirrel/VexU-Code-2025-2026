@@ -69,13 +69,18 @@ namespace intake {
     const static std::vector<std::int8_t> kIntakeMotorsID = {-16, 12};
     const static pros::v5::MotorGears kIntakeMotorColor = pros::MotorGearset::blue;
 
-    const static std::vector<std::int8_t> kOuttakeMotorsID = {11};
-    const static pros::v5::MotorGears kOuttakeMotorColor = pros::MotorGearset::blue;
+    const static char intakeChuteID = 'C';
+    static bool intakeChute = true;
 }
 
 namespace outtake {
+    const static std::vector<std::int8_t> kOuttakeMotorsID = {11};
+    const static pros::v5::MotorGears kOuttakeMotorColor = pros::MotorGearset::blue;
+
     const static char outtakeGateID = 'A';
     const static char outtakeLiftID = 'B';
+    static bool outtakeGate = false;
+    static bool outtakeLift = false;
 }
 
 } // all global consts

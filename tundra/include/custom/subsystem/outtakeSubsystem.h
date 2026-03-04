@@ -7,7 +7,7 @@
 class OuttakeSubsystem : public SubsystemBase {
     public:
         OuttakeSubsystem() :
-            m_outtakeMotor(globalConst::intake::kOuttakeMotorsID, globalConst::intake::kOuttakeMotorColor), 
+            m_outtakeMotor(globalConst::outtake::kOuttakeMotorsID, globalConst::outtake::kOuttakeMotorColor),
             pneumaticLift(globalConst::outtake::outtakeLiftID, LOW), 
             pneumaticGate(globalConst::outtake::outtakeGateID, LOW)
         {
@@ -15,27 +15,25 @@ class OuttakeSubsystem : public SubsystemBase {
         }
 
         inline void run(bool reverse=false) {
-            m_outtakeMotor.move(globalConst::MotorTools::percentToVelocity(reverse ? -100:100, globalConst::intake::kIntakeMotorColor));
+            m_outtakeMotor.move(globalConst::MotorTools::percentToVelocity(reverse ? -100:100, globalConst::outtake::kOuttakeMotorColor));
         }
         inline void stop() {
             m_outtakeMotor.brake();
         }
 
-        inline void setGate(bool open) {
-            pneumaticGate.set_value(open);
+        inline void toggleGate() {
+            globalConst::outtake::outtakeGate = !globalConst::outtake::outtakeGate;
+            pneumaticGate.set_value(globalConst::outtake::outtakeGate);
         }
 
-        inline void setLift(bool open) {
-            pneumaticLift.set_value(open);
+        inline void toggleLift() {
+            globalConst::outtake::outtakeLift = !globalConst::outtake::outtakeLift;
+            pneumaticLift.set_value(globalConst::outtake::outtakeLift);
         }
-
 
     private:
         pros::MotorGroup m_outtakeMotor;
         pros::adi::DigitalOut pneumaticLift;
         pros::adi::DigitalOut pneumaticGate;
-
-        bool outtakeGate;
-        bool outtakeLift;
 };
 

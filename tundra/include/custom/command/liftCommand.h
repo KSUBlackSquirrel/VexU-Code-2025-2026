@@ -9,13 +9,12 @@ class SubsystemBase;
 
 class LiftCommand: public CommandBase {
 public:
-    LiftCommand(OuttakeSubsystem* sub, bool open) { 
+    LiftCommand(OuttakeSubsystem* sub) { 
         m_subsystem = sub;
-        m_open = open;
     }
 
     inline void execute() override {
-        m_subsystem->setLift(m_open);
+        m_subsystem->toggleLift();
     }
 
     inline void end(bool interrupted) override {
@@ -29,5 +28,4 @@ public:
 
 private:
     OuttakeSubsystem* m_subsystem;
-    bool m_open;
 };
