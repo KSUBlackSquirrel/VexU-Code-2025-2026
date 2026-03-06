@@ -1,0 +1,20 @@
+-29, 47, 103.15
+-30, 47, 101.912
+-31, 47, 100.658
+-32, 47, 99.388
+-33, 47, 98.102
+-34, 47, 96.799
+-35, 47, 95.478
+-36, 47, 94.138
+-37, 47, 92.779
+-38, 47, 91.4
+-39, 47, 90
+-40, 47, 0
+-40, 47, 0
+-60, 47, 0
+endData
+127
+127
+200
+-29, 47, -34.5, 47, -34.5, 47, -40, 47
+#PATH.JERRYIO-DATA {"appVersion":"0.10.0","format":"LemLib v0.5","gc":{"robotWidth":12,"robotHeight":12,"robotIsHolonomic":false,"showRobot":false,"uol":2.54,"pointDensity":1,"controlMagnetDistance":1.968503937007874,"fieldImage":{"displayName":"V5RC 2026 - Push Back","signature":"V5RC-PushBack-H2H-TopDownHighlighted-TileColor66_71","origin":{"__type":"built-in"}},"coordinateSystem":"VEX Gaming Positioning System"},"paths":[{"segments":[{"controls":[{"uid":"JSixtVJf6e","x":-29,"y":47,"lock":false,"visible":true,"heading":90,"__type":"end-point"},{"uid":"rGgTLSKmFG","x":-40,"y":47,"lock":false,"visible":true,"heading":90,"__type":"end-point"}],"speedProfiles":[],"lookaheadKeyframes":[],"uid":"6MqZUb29Lo"}],"pc":{"speedLimit":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":127,"label":"127"},"step":1,"from":90,"to":127},"bentRateApplicableRange":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":1,"label":"1"},"step":0.001,"from":0,"to":0.1},"maxDecelerationRate":127},"name":"Path","uid":"D5IKl5O9il","lock":false,"visible":true}]}

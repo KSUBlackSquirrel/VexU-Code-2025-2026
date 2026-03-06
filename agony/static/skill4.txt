@@ -1,0 +1,21 @@
+-29, 47, 77.8
+-30.789, 46.107, 74.464
+-32.515, 45.098, 70.972
+-34.207, 44.031, 67.298
+-35.896, 42.959, 63.411
+-37.619, 41.945, 59.271
+-39.415, 41.066, 54.821
+-41.31, 40.437, 49.98
+-43.291, 40.198, 44.624
+-45.269, 40.455, 38.532
+-47.126, 41.184, 31.27
+-48.812, 42.256, 21.689
+-50.224, 43.454, 0
+-50.224, 43.454, 0
+-65.482, 56.385, 0
+endData
+127
+100
+200
+-29, 47, -36.45, 43.687, -42.053, 35.749, -50.224, 43.454
+#PATH.JERRYIO-DATA {"appVersion":"0.10.0","format":"LemLib v0.5","gc":{"robotWidth":14,"robotHeight":14,"robotIsHolonomic":false,"showRobot":true,"uol":2.54,"pointDensity":2,"controlMagnetDistance":1.968503937007874,"fieldImage":{"displayName":"VURC 2026 - Push Back","signature":"VURC-PushBack-H2H-TopDownHighlighted-TileColor66_71","origin":{"__type":"built-in"}},"coordinateSystem":"VEX Gaming Positioning System"},"paths":[{"segments":[],"pc":{"speedLimit":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":127,"label":"127"},"step":1,"from":20,"to":100},"bentRateApplicableRange":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":1,"label":"1"},"step":0.001,"from":0,"to":0.1},"maxDecelerationRate":127},"name":"Path","uid":"sP7VbTfwpt","lock":false,"visible":true},{"segments":[{"controls":[{"uid":"9E8uvC5NRV","x":-29,"y":47,"lock":false,"visible":true,"heading":90,"__type":"end-point"},{"uid":"YKQ1QThMuk","x":-36.449641933740025,"y":43.687272602110134,"lock":false,"visible":true,"__type":"control"},{"uid":"7QGB0deDtm","x":-42.05296890280076,"y":35.749226062607434,"lock":false,"visible":true,"__type":"control"},{"uid":"rF60cEu1VW","x":-50.224487399347645,"y":43.45380064506593,"lock":false,"visible":true,"heading":170,"__type":"end-point"}],"speedProfiles":[],"lookaheadKeyframes":[],"uid":"usFn3o1xEy"}],"pc":{"speedLimit":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":127,"label":"127"},"step":1,"from":20,"to":100},"bentRateApplicableRange":{"minLimit":{"value":0,"label":"0"},"maxLimit":{"value":1,"label":"1"},"step":0.001,"from":0,"to":0.1},"maxDecelerationRate":127},"name":"Path","uid":"WmVREXkjNf","lock":false,"visible":true}]}
